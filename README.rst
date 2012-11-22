@@ -2,12 +2,66 @@ HumbleDB - MongoDB Object-Document Mapper
 =========================================
 
 HumbleDB is an extremely lightweight ODB that works with pymongo to provide a
-convenient and easy to use interface.
+convenient and easy to use interface. It enforces strict explictness when a
+connection to a MongoDB cluster or replica set is being used, by disallowing
+any read or write interaction outside of a context manager's context block.
 
-The two main parts to HumbleDB are the `Document` class, and the `Mongo` class.
+Quick Example
+-------------
+
+::
+   >>> from humbledb import Mongo, Document
+   >>> class TestDoc(Document):
+   ...     config_database = 'test'
+   ...     config_collection = 'testdoc'
+   ...     test_key = 't'
+   ...     other_key = 'o'
+   ...     
+   >>> doc = TestDoc()
+   >>> doc.test_key = 'Hello'
+   >>> doc.other_key = 'World'
+   >>> doc
+   TestDoc({'t': 'Hello', 'o': 'World'})
+   >>> with Mongo:
+   ...     TestDoc.insert(doc)
+   ...     
+   >>> with Mongo:
+   ...     found = TestDoc.find_one()
+   ...     
+   >>> found
+   TestDoc({u'_id': ObjectId('50ad81586112797f89b99606'), u't': u'Hello', u'o': u'World'})
+   >>> doc
+   TestDoc({'_id': ObjectId('50ad81586112797f89b99606'), 't': 'Hello', 'o': 'World'})
+   >>> found['_id']
+   ObjectId('50ad81586112797f89b99606')
+   >>> found['t']
+   u'Hello'
+   >>> found.test_key
+   u'Hello'
+
+The two main parts to HumbleDB are the `Document` class and the `Mongo` class.
+
+The `Document` class
+--------------------
+
+HumbleDB Document classes are subclasses of dicts, which mean they play quite
+nicely with the underly pymongo interface. An individual Document subclass
+works both as a document instance and as an interface to that document's
+collection.
+
+The Document superclass provides some nice conveniences for its subclasses:
+
+#. You can map short key names, to long, human readable attributes, for easy
+   access and better understandability in code.
+#. All of the `pymongo.Collection
+   <http://api.mongodb.org/python/current/api/pymongo/collection.html>`_
+   methods are mapped onto the Document subclass for easy access.
+#. All documents returned by query operations are converted into instances of
+   your subclass.
+
 
 The `Mongo` class
-------------------------
+-----------------
 
 The `Mongo` class is a superclass designed to hold a long-lived
 `pymongo.Connection

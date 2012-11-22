@@ -2,7 +2,7 @@ import mock
 import pyconfig
 
 from .util import *
-from me.db import Mongo, Document
+from humbledb import Mongo, Document
 
 
 DB_NAME = 'nose_test'

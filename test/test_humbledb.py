@@ -57,7 +57,6 @@ def test_missing_collection():
         config_database = DB_NAME
 
 
-
 @raises(AttributeError)
 def test_bad_attribute():
     with _TestDB:

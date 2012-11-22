@@ -106,8 +106,8 @@ class Mongo(object):
     _self = None
     _connection = None
 
-    config_host = None
-    config_port = None
+    config_host = 'localhost'
+    config_port = 27017
     config_replica = None
 
     def __new__(cls):

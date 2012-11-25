@@ -9,7 +9,7 @@ any read or write interaction outside of a context manager's context block.
 Quick Example
 -------------
 
-::
+.. code-block:: python
 
    >>> from humbledb import Mongo, Document
    >>> # config_database and config_collection are required attributes

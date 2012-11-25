@@ -10,18 +10,32 @@ Quick Example
 -------------
 
 ::
+
    >>> from humbledb import Mongo, Document
+   >>> # config_database and config_collection are required attributes
    >>> class TestDoc(Document):
    ...     config_database = 'test'
    ...     config_collection = 'testdoc'
    ...     test_key = 't'
    ...     other_key = 'o'
    ...     
+   >>> # When you create a Document instance, you can set its keys via any
+   >>> # mapped attributes you create
    >>> doc = TestDoc()
    >>> doc.test_key = 'Hello'
    >>> doc.other_key = 'World'
+   >>> # The __repr__ for the instance shows the actual doc
    >>> doc
    TestDoc({'t': 'Hello', 'o': 'World'})
+   >>> # A Document instance is also a dict, but you have to access the key
+   >>> # names directly
+   >>> doc['o']
+   u'World'
+   >>> # Or use the mapped attribute
+   >>> doc[TestDoc.test_key]
+   u'Hello'
+   >>> # The mongo class manages database connections and is used as a context
+   >>> # manager to limit the time a socket is used from the connection pool
    >>> with Mongo:
    ...     TestDoc.insert(doc)
    ...     

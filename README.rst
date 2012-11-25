@@ -34,8 +34,7 @@ Quick Example
    >>> # Or use the mapped attribute
    >>> doc[TestDoc.test_key]
    u'Hello'
-   >>> # The mongo class manages database connections and is used as a context
-   >>> # manager to limit the time a socket is used from the connection pool
+   >>> # The Mongo class manages database connection and is a context manager
    >>> with Mongo:
    ...     TestDoc.insert(doc)
    ...     
@@ -73,7 +72,6 @@ The Document superclass provides some nice conveniences for its subclasses:
 #. All documents returned by query operations are converted into instances of
    your subclass.
 
-
 The `Mongo` class
 -----------------
 
@@ -88,7 +86,9 @@ pool. In its most basic functioning, this context manager behavior is a wrapper
 around `Connection.start_request()
 <http://api.mongodb.org/python/current/api/pymongo/connection.html#pymongo.connection.Connection.start_request>`_.
 
-Here is a basic example of a `Mongo` subclass::
+Here is a basic example of a `Mongo` subclass:
+
+.. code-block:: python
 
    from humbledb import Mongo
 
@@ -100,7 +100,9 @@ The `Mongo` class can be used directly, without subclassing, if all you need is
 access to the default host and port (``localhost`` and ``27017``). In
 production environments, where multiple database clusters are often in use,
 subclassing lets you be explicit in which cluster you're connecting to.
-Subclassing also allows you to connect to named replica sets::
+Subclassing also allows you to connect to named replica sets:
+
+.. code-block:: python
 
    from humbledb import Mongo
 

@@ -1,7 +1,4 @@
-*.py[cod]
-
-# C extensions
-*.so
+*.py[co]
 
 # Packages
 *.egg
@@ -15,8 +12,6 @@ var
 sdist
 develop-eggs
 .installed.cfg
-lib
-lib64
 
 # Installer logs
 pip-log.txt
@@ -24,16 +19,15 @@ pip-log.txt
 # Unit test / coverage reports
 .coverage
 .tox
-nosetests.xml
 
 # Translations
 *.mo
 
 # Mr Developer
 .mr.developer.cfg
-.project
-.pydevproject
 
 # Vim
 *.swp
-*.swo
+
+# Sphinx
+docs/_build

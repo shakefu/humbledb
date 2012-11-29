@@ -1,9 +1,11 @@
 import multiprocessing, logging # Fix atexit bug
 from setuptools import setup, find_packages
 
+import humbledb
+
 setup(
         name='humbledb',
-        version='1.0.0',
+        version=humbledb.__version__,
         description="HumbleDB - MongoDB Object-Document Mapper",
         author="Jacob Alheid",
         author_email="jake@about.me",

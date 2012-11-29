@@ -1,6 +1,6 @@
 """
-:mod:`db` module
-================
+:mod:`humbledb.mongo` module
+============================
 
 """
 import logging
@@ -94,12 +94,28 @@ class Mongo(object):
     work properly with gevent.
 
     This class also allows tracking whether we're in a session/context scope,
-    so that we can prevent :class:`Document`s from accessing the connection
-    independently. This is so that we always ensure that
+    so that we can prevent :class:`Document` instances from accessing the
+    connection independently. This is so that we always ensure that
     :meth:`~pymongo.connection.Connection.end_request` is always called to
     release the socket back into the connection pool.
 
     This class is made to be thread safe.
+
+    If you need to connect to a different host or port than the default of
+    ``'localhost'`` and ``27017``, then you should subclass the :class:`.Mongo`
+    class::
+
+        from humbledb import Mongo
+
+        class MyDB(Mongo):
+            config_host = 'mongo.mydomain.com'
+            config_port = 3001
+
+    And then just use your subclass as you would the :class:`.Mongo` context
+    manager::
+
+        with MyDB:
+            docs = MyDocument.find({MyDocument.some_field: 1})
 
     """
     __metaclass__ = MongoMeta
@@ -107,8 +123,11 @@ class Mongo(object):
     _connection = None
 
     config_host = 'localhost'
+    """ The host name or address to connect to. """
     config_port = 27017
+    """ The port to connect to. """
     config_replica = None
+    """ If you're connecting to a replica set, this holds its name. """
 
     def __new__(cls):
         """ This class cannot be instantiated. """
@@ -328,78 +347,82 @@ class Document(dict):
 
         An example document::
 
-            from me.db import Document
+            from humbledb import Document
 
             class Note(Document):
-                ''' Note. '''
-                config_database = 'cypher'
-                config_collection = 'notes'
+                config_database = 'exampledb'
+                config_collection = 'mycollections'
                 config_indexes = ['user_name', 'timestamp']
 
                 _id = '_id'
                 user_name = 'u'
-                source = 's'
-                action = 'a'
-                actor = 'c'
                 html = 'h'
                 text = 'x'
-                unread = 'r'
-                emailed = 'e'
                 timestamp = 't'
 
-        To access the pymongo `Collection` instance methods, you must first
-        enter into a database connection context. This is to ensure that a
-        connection from pymongo's connection pool is held for the minimum
-        amount of time needed, to ensure maximum possible availability in a
-        concurrent environment.
+        To access the pymongo :class:`~pymongo.collection.Collection`  instance
+        methods, you must first enter into a database connection context. This
+        is to ensure that a connection from pymongo's connection pool is held
+        for the minimum amount of time needed, to ensure maximum possible
+        availability in a concurrent environment.
 
         Accessing methods::
 
-            from cypher.db import NoteDB, Note
+            from humbledb import Mongo
+            from myexample import Note
 
-            with NoteDB:
+            with Mongo:
                 note = Note.find_one({})
 
         Creating new document instances works much like you'd expect::
 
-            from cypher.db import NoteDB, Note
+            from humbledb import Mongo
+            from myexample import Note
 
+            # Create new instance
             note = Note()
             note.user_name = 'test'
-            note.source = 'docstring'
-            note.action = 'testing'
+            note.html = '<h1>Hello World</h1>'
+            note.text = 'Hello World'
 
-            # Insert into DB with pymongo call
-            with NoteDB:
+            # Insert into DB with proxied pymongo call
+            with Mongo:
                 note_id = Note.insert(note)
 
         When providing query parameters to the pymongo methods, it's best to
         use the long attributes as the key values, rather than the strings
         themselves, for readability and to keep the key names consistent,
-        should you want to change one later::
+        should you want to change one later:
 
-            from cypher.db import NoteDB, Note
+        .. code-block:: python
 
-            with NoteDB:
+            from humbledb import Mongo
+            from myexample import Note
+
+            with Mongo:
                 # Count all notes
                 count = Note.find({Note.user_name: 'test'}).count()
 
                 # Find a note's _id
-                note_id = Note.find_one({Note.unread: True}, fields=['_id'])
-                note_id = note_id['_id']
+                note_id = Note.find_one({Note.unread: True}, fields=[Note._id])
+                note_id = note_id[Note._id]
 
                 # Update a note
                 Note.update({Note._id: note_id}, {'$set': {Note.unread: False})
 
-        See :mod:`cypher.api` for more examples.
+        When accessed at the class level, the attributes simply return the
+        string that they're mapped to.
 
     """
     __metaclass__ = DocumentMeta
     _reverse = None
 
     config_database = None
+    """ Database name for this document. """
     config_collection = None
+    """ Collection name for this document. """
     config_indexes = None
+    """ Indexes for this document. """
 
     def __repr__(self):
         return "{}({})".format(

@@ -1,11 +1,14 @@
 import multiprocessing, logging # Fix atexit bug
 from setuptools import setup, find_packages
 
-import humbledb
+exec("c=__import__('compiler');a='__version__';l=[];g=lambda:[n.expr.value for'
+        'n in l for o in n.nodes if o.name==a].pop();c.walk(c.parseFile('%s/__'
+        'init__.py'),type('v',(object,),{'visitAssign':lambda s,n:l.append(n)}'
+        ')());exec(a+'=g()');"%'humbledb')
 
 setup(
         name='humbledb',
-        version=humbledb.__version__,
+        version=__version__,
         description="HumbleDB - MongoDB Object-Document Mapper",
         author="Jacob Alheid",
         author_email="jake@about.me",
@@ -13,7 +16,7 @@ setup(
         install_requires=[
             'pymongo >= 2.2.1',
             'pyconfig',
-            'pytool',
+            'pytool > 1.0',
             ],
         test_suite='nose.collector',
         tests_require=[

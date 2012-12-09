@@ -2,19 +2,112 @@
 :mod:`humbledb.mongo` module
 ============================
 
+:class:`Mongo` class
+--------------------
+
+If you need to connect to a different host or port than the default of
+``'localhost'`` and ``27017``, then you should subclass the :class:`.Mongo`
+class::
+
+    from humbledb import Mongo
+
+    class MyDB(Mongo):
+        config_host = 'mongo.mydomain.com'
+        config_port = 3001
+
+And then just use your subclass as you would the :class:`.Mongo` context
+manager::
+
+    with MyDB:
+        docs = MyDocument.find({MyDocument.some_field: 1})
+
+:class:`Document` class
+-----------------------
+
+An example document::
+
+    from humbledb import Document
+
+    class Note(Document):
+        config_database = 'exampledb'
+        config_collection = 'mycollections'
+        config_indexes = ['user_name', 'timestamp']
+
+        _id = '_id'
+        user_name = 'u'
+        html = 'h'
+        text = 'x'
+        timestamp = 't'
+
+To access the pymongo :class:`~pymongo.collection.Collection`  instance
+methods, you must first enter into a database connection context. This is to
+ensure that a connection from pymongo's connection pool is held for the minimum
+amount of time needed, to ensure maximum possible availability in a concurrent
+environment.
+
+Accessing methods::
+
+    from humbledb import Mongo
+    from myexample import Note
+
+    with Mongo:
+        note = Note.find_one({})
+
+Creating new document instances works much like you'd expect::
+
+    from humbledb import Mongo
+    from myexample import Note
+
+    # Create new instance
+    note = Note()
+    note.user_name = 'test'
+    note.html = '<h1>Hello World</h1>'
+    note.text = 'Hello World'
+
+    # Insert into DB with proxied pymongo call
+    with Mongo:
+        note_id = Note.insert(note)
+
+When providing query parameters to the pymongo methods, it's best to use the
+long attributes as the key values, rather than the strings themselves, for
+readability and to keep the key names consistent, should you want to change one
+later:
+
+.. code-block:: python
+
+    from humbledb import Mongo
+    from myexample import Note
+
+    with Mongo:
+        # Count all notes
+        count = Note.find({Note.user_name: 'test'}).count()
+
+        # Find a note's _id
+        note_id = Note.find_one({Note.unread: True}, fields=[Note._id])
+        note_id = note_id[Note._id]
+
+        # Update a note
+        Note.update({Note._id: note_id}, {'$set': {Note.unread: False})
+
+When accessed at the class level, the attributes simply return the
+string that they're mapped to.
+
 """
 import logging
 import threading
 from functools import wraps
+from collections import deque
 
 import pymongo
 import pyconfig
+from pytool.lang import UNSET
 from pytool.lang import classproperty
 
 
 __all__ = [
-        'Mongo',
         'Document',
+        'Embed',
+        'Mongo',
         ]
 
 
@@ -23,6 +116,8 @@ class MongoMeta(type):
         without having to instantiate it.
 
     """
+    _connection = None
+
     def __new__(mcs, name, bases, cls_dict):
         """ Return the Mongo class. """
         # Specially handle base class
@@ -101,26 +196,9 @@ class Mongo(object):
 
     This class is made to be thread safe.
 
-    If you need to connect to a different host or port than the default of
-    ``'localhost'`` and ``27017``, then you should subclass the :class:`.Mongo`
-    class::
-
-        from humbledb import Mongo
-
-        class MyDB(Mongo):
-            config_host = 'mongo.mydomain.com'
-            config_port = 3001
-
-    And then just use your subclass as you would the :class:`.Mongo` context
-    manager::
-
-        with MyDB:
-            docs = MyDocument.find({MyDocument.some_field: 1})
-
     """
     __metaclass__ = MongoMeta
     _self = None
-    _connection = None
 
     config_host = 'localhost'
     """ The host name or address to connect to. """
@@ -196,27 +274,8 @@ class Mongo(object):
             return None
 
 
-class DictProxyAttribute(object):
-    """ Maps long attribute names to convenient/shorter dictionary names. """
-    def __init__(self, full_name, name):
-        self.full_name = full_name
-        self.key = name
-
-    def __get__(self, instance, owner):
-        if instance is None:
-            return self.key
-        return instance.get(self.key, None)
-
-    def __set__(self, instance, value):
-        instance[self.key] = value
-
-    def __delete__(self, instance):
-        if self.key in instance:
-            del instance[self.key]
-
-
 class CollectionAttribute(object):
-    """ Acts as the collection atribute. Refuses to be read unless the
+    """ Acts as the collection attribute. Refuses to be read unless the
         the executing code is in a :class:`Mongo` context or has already called
         :meth:`Mongo.start`.
     """
@@ -224,69 +283,305 @@ class CollectionAttribute(object):
         self = instance or owner
         database = self.config_database
         collection = self.config_collection
+        if not database or not collection:
+            raise RuntimeError("Missing config_database or config_collection")
         # Only allow access to the collection in a Mongo context
         if Mongo.context:
             return Mongo.context.connection[database][collection]
         raise RuntimeError("'collection' not available without context")
 
 
-class DocumentMeta(type):
-    """ Metaclass for Documents. Does a lot of stuff. See :meth:`__new__` for a
-        step by step of what this does.
+class NameMap(unicode):
+    """ This class is used to map attribute names to document keys internally.
     """
+    def __init__(self, value=''):
+        self._key = value.split('.')[-1]
+        super(NameMap, self).__init__(value)
+
+    @property
+    def key(self):
+        # We don't map leading underscore names, so we cheat by storing our key
+        # in a private var, and then get it back out again
+        return self._key
+
+    def __setitem__(self, key, value):
+        self.__dict__[key] = value
+
+    def __getitem__(self, key):
+        return self.__dict__[key]
+
+    def __contains__(self, key):
+        return key in self.__dict__
+
+    def filtered(self):
+        """ Return self.__dict__ minus any private keys. """
+        return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
+
+    def merge(self, other):
+        """ Merges another `.NameMap` instance into this one. """
+        self.__dict__.update(other.filtered())
+
+
+class DictMap(dict):
+    """ This class is used to map embedded documents to their attribute names.
+        This class ensures that the original document is kept up to sync with
+        the embedded document clones via a reference to the `parent`, which at
+        the highest level is the main document.
+
+    """
+    def __init__(self, value, name_map, parent, key):
+        object.__setattr__(self, '_parent', parent)
+        object.__setattr__(self, '_key', key)
+        object.__setattr__(self, '_name_map', name_map)
+        super(DictMap, self).__init__(value)
+
+    def __getattr__(self, name):
+        # Get the mapped attributes
+        name_map = object.__getattribute__(self, '_name_map')
+
+        if name not in name_map:
+            raise AttributeError("TODO: Check for unmapped keys")
+
+        attr = name_map[name]
+
+        # Get the actual key if we are mapped too deep
+        if isinstance(attr, NameMap):
+            key = attr.key
+        else:
+            key = attr
+
+        # Return the value if we have it
+        if key in self:
+            value = self[key]
+            if isinstance(value, dict):
+                value = DictMap(value, attr, self, key)
+            return value
+
+        if isinstance(attr, NameMap):
+            return DictMap({}, attr, self, key)
+
+        # TODO: Decide whether to allow non-mapped keys via attribute access
+        object.__getattribute__(self, name)
+
+    def __setattr__(self, name, value):
+        # Get the mapped attributes
+        name_map = object.__getattribute__(self, '_name_map')
+        if name not in name_map:
+            raise AttributeError("TODO: Allow setting unmapped keys")
+
+        # If it's mapped, let's map it!
+        key = name_map[name]
+
+        if isinstance(key, NameMap):
+            key = key.key
+        # Assign the mapped key
+        self[key] = value
+
+    def __delattr__(self, name):
+        # Get the mapped attributes
+        name_map = object.__getattribute__(self, '_name_map')
+        # If it's mapped, let's map it!
+        if name not in name_map:
+            object.__delattr__(self, name)
+            return
+
+        # If it's mapped, let's map it!
+        key = name_map[name]
+
+        if isinstance(key, NameMap):
+            key = key.key
+        # Delete the key if we have it
+        if key in self:
+            del self[key]
+            return
+
+        # This will attempt a normal delete, and probably raise an error
+        object.__delattr__(self, name)
+
+    def __setitem__(self, key, value):
+        # Get special attributes
+        _key = object.__getattribute__(self, '_key')
+        _parent = object.__getattribute__(self, '_parent')
+
+        # The current dictionary may not exist in the parent yet, so we have
+        # to create a new one if it's missing
+        if _key not in _parent:
+            _parent[_key] = {}
+        # Keep things synced
+        _parent[_key][key] = value
+
+        # Assign to self
+        super(DictMap, self).__setitem__(key, value)
+
+    def __delitem__(self, key):
+        # Get special attributes
+        _key = object.__getattribute__(self, '_key')
+        _parent = object.__getattribute__(self, '_parent')
+
+        if _key not in _parent:
+            # Fuck it
+            return
+        # Delete from parent
+        if key in _parent[_key]:
+            del _parent[_key][key]
+            # If this dict is empty, remove it totally from the parent
+            if not _parent[_key]:
+                del _parent[_key]
+        # Delete from self
+        if key in self:
+            super(DictMap, self).__delitem__(key)
+            return
+        # Raise an error
+        super(DictMap, self).__delitem__(key)
+
+
+class Embed(unicode):
+    """ This class is used to map attribute names on embedded subdocuments.
+    """
+    def as_name_map(self, base_name):
+        name_map = NameMap(base_name)
+
+        for name, value in self.__dict__.items():
+            # Skip most everything
+            if not isinstance(value, basestring):
+                continue
+            # Skip private stuff
+            if name.startswith('_'):
+                continue
+
+            # Concatonate names
+            if base_name:
+                cname = base_name + '.' + value
+
+            # Recursively map
+            if isinstance(value, Embed):
+                value = value.as_name_map(cname)
+                setattr(name_map, name, value)
+            else:
+                # Create a new subattribute
+                setattr(name_map, name, NameMap(cname))
+
+        return name_map
+
+    def as_reverse_name_map(self, base_name):
+        name_map = NameMap(base_name)
+
+        for name, value in self.__dict__.items():
+            # Skip most everything
+            if not isinstance(value, basestring):
+                continue
+            # Skip private stuff
+            if name.startswith('_'):
+                continue
+
+            # Recursively map
+            if isinstance(value, Embed):
+                reverse_value = value.as_reverse_name_map(name)
+            else:
+                # Create a new subattribute
+                reverse_value = NameMap(name)
+
+            setattr(name_map, value, reverse_value)
+
+        return name_map
+
+
+class DocumentMeta(type):
+    """ Metaclass for Documents. """
+    _ignore_attributes = set(['__test__'])
+    _collection_methods = set([name for name in
+        dir(pymongo.collection.Collection) if not name.startswith('_') and
+        callable(getattr(pymongo.collection.Collection, name))])
+    _wrapped_methods = set(['find', 'find_one', 'find_and_modify'])
+
+    # Helping pylint with identifying class attributes
+    collection = None
+
     def __new__(mcs, cls_name, bases, cls_dict):
         # Don't process Document superclass
         if cls_name == 'Document' and bases == (dict,):
             return type.__new__(mcs, cls_name, bases, cls_dict)
 
-        # Handle Document subclasses
-        database = None
-        collection = None
-        reverse = {}
+        # Attribute names that are configuration settings
+        config_names = set(['config_database', 'config_collection',
+            'config_indexes'])
 
         # Attribute names that conflict with the dict base class
-        bad_names = set(['clear', 'collection', 'copy', 'fromkeys', 'get',
-                'has_key', 'items', 'iteritems', 'iterkeys', 'itervalues',
-                'keys', 'pop', 'popitem', 'setdefault', 'update', 'values',
-                'viewitems', 'viewkeys', 'viewvalues'])
+        bad_names = mcs._collection_methods | set(['clear', 'collection',
+            'copy', 'fromkeys', 'get', 'has_key', 'items', 'iteritems',
+            'iterkeys', 'itervalues', 'keys', 'pop', 'popitem', 'setdefault',
+            'update', 'values', 'viewitems', 'viewkeys', 'viewvalues'])
 
+        # Merge inherited name_maps
+        name_map = NameMap()
+        reverse_name_map = NameMap()
+        for base in reversed(bases):
+            if issubclass(base, Document):
+                name_map.merge(getattr(base, '_name_map', NameMap()))
+                reverse_name_map.merge(getattr(base, '_reverse_name_map',
+                    NameMap()))
+
+        # Always have an _id attribute
+        if '_id' not in cls_dict and '_id' not in name_map:
+            cls_dict['_id'] = '_id'
+
+        # Iterate over the names in `cls_dict` looking for attributes whose
+        # values are string literals or `NameMap` subclasses. These attributes
+        # will be mapped to document keys where the key is the value
         for name in cls_dict.keys():
+            # Raise error on bad attribute names
             if name in bad_names:
                 raise TypeError("'{}' bad attribute name".format(name))
-            # Ignore names starting with underscore, except _id
-            elif name.startswith('_') and name != '_id':
+            # Skip configuration
+            if name in config_names:
                 continue
-            # Ignore methods
-            elif callable(cls_dict[name]):
+            # Skip most everything
+            if not isinstance(cls_dict[name], basestring):
                 continue
-
-            # Grab the database and collection values
-            if name == 'config_database':
-                database = cls_dict[name]
-                continue
-            elif name == 'config_collection':
-                collection = cls_dict[name]
-                continue
-            # Don't proxy the config_indexes attribute
-            elif name == 'config_indexes':
+            # Skip private stuff
+            if name.startswith('_') and name != '_id':
                 continue
 
-            # Assign proxy attributes to remaining non-private names
+            # Remove the defining attribute from the class namespace
             value = cls_dict.pop(name)
-            cls_dict[name] = DictProxyAttribute(name, value)
-            reverse[value] = name
+            reverse_value = name
 
-        if not database or not collection:
-            raise TypeError("Missing _database or _collection")
+            # Convert Embed objects to nested name map objects
+            if isinstance(value, Embed):
+                reverse_value = value.as_reverse_name_map(name)
+                value = value.as_name_map(value)
+
+            name_map[name] = value
+            reverse_name_map[value] = reverse_value
+
+        # Create _*name_map attributes
+        cls_dict['_name_map'] = name_map
+        cls_dict['_reverse_name_map'] = reverse_name_map
 
         # Create collection attribute
         cls_dict['collection'] = CollectionAttribute()
 
-        # Create reverse lookup attribute
-        cls_dict['_reverse'] = reverse
-
-        # Return new class
         return type.__new__(mcs, cls_name, bases, cls_dict)
+
+    def __getattr__(cls, name):
+        # Some attributes need to raise an error properly
+        if name in cls._ignore_attributes:
+            return object.__getattribute__(cls, name)
+
+        # See if we're looking for a collection method
+        if name in cls._collection_methods:
+            value = getattr(cls.collection, name, None)
+            if name in cls._wrapped_methods:
+                value = cls._wrap(value)
+            return value
+
+        # Check if we have a mapped attribute name
+        name_map = object.__getattribute__(cls, '_name_map')
+        if name in name_map:
+            return name_map[name]
+
+        # Otherwise, let's just error
+        return object.__getattribute__(cls, name)
 
     def _wrap(cls, func):
         """ Wraps ``func`` to ensure that it has the as_class keyword
@@ -304,26 +599,6 @@ class DocumentMeta(type):
             return func(*args, **kwargs)
         return wrapper
 
-    def __getattr__(cls, name):
-        # Exclude certain names from being passed through
-        # __test__ is listed here so nosetests/mocks/something works properly
-        if name in ('__test__',):
-            raise AttributeError("'{}' has no attribute '{}'".format(
-                cls.__name__, name))
-        # Allow collection methods to be called directly from class instances
-        # but only when in a Mongo context
-        if name not in ('config_database', 'config_collection',
-                'config_indexes'):
-            value = getattr(cls.collection, name, None)
-            if not isinstance(value, pymongo.collection.Collection):
-                if callable(value):
-                    wrap_methods = set(['find', 'find_one', 'find_and_modify'])
-                    if name in wrap_methods:
-                        value = cls._wrap(value)
-                return value
-        raise AttributeError("'{}' has no attribute '{}'".format(
-            cls.__name__, name))
-
     @property
     def update(cls):
         """ Method to pass through the *dict*'s update method and instead use
@@ -334,88 +609,10 @@ class DocumentMeta(type):
 
 
 class Document(dict):
-    """ MongoDB Document class.
-
-        This class is a dictionary subclass designed to provide attribute-style
-        access to the underlying dictionary mechanisms, to help support mapping
-        of intelligible and descriptive long attribute names to shorter, space
-        saving document key names. It holds configuration options for database,
-        collection and indexes to be used with a given document. It also
-        provides easy access to the corresponding
-        :class:`~pymongo.collection.Collection` instance for the given
-        database/collection configuration.
-
-        An example document::
-
-            from humbledb import Document
-
-            class Note(Document):
-                config_database = 'exampledb'
-                config_collection = 'mycollections'
-                config_indexes = ['user_name', 'timestamp']
-
-                _id = '_id'
-                user_name = 'u'
-                html = 'h'
-                text = 'x'
-                timestamp = 't'
-
-        To access the pymongo :class:`~pymongo.collection.Collection`  instance
-        methods, you must first enter into a database connection context. This
-        is to ensure that a connection from pymongo's connection pool is held
-        for the minimum amount of time needed, to ensure maximum possible
-        availability in a concurrent environment.
-
-        Accessing methods::
-
-            from humbledb import Mongo
-            from myexample import Note
-
-            with Mongo:
-                note = Note.find_one({})
-
-        Creating new document instances works much like you'd expect::
-
-            from humbledb import Mongo
-            from myexample import Note
-
-            # Create new instance
-            note = Note()
-            note.user_name = 'test'
-            note.html = '<h1>Hello World</h1>'
-            note.text = 'Hello World'
-
-            # Insert into DB with proxied pymongo call
-            with Mongo:
-                note_id = Note.insert(note)
-
-        When providing query parameters to the pymongo methods, it's best to
-        use the long attributes as the key values, rather than the strings
-        themselves, for readability and to keep the key names consistent,
-        should you want to change one later:
-
-        .. code-block:: python
-
-            from humbledb import Mongo
-            from myexample import Note
-
-            with Mongo:
-                # Count all notes
-                count = Note.find({Note.user_name: 'test'}).count()
-
-                # Find a note's _id
-                note_id = Note.find_one({Note.unread: True}, fields=[Note._id])
-                note_id = note_id[Note._id]
-
-                # Update a note
-                Note.update({Note._id: note_id}, {'$set': {Note.unread: False})
-
-        When accessed at the class level, the attributes simply return the
-        string that they're mapped to.
-
-    """
+    """ This class represents a Mongo document. """
     __metaclass__ = DocumentMeta
-    _reverse = None
+
+    collection = None
 
     config_database = None
     """ Database name for this document. """
@@ -430,17 +627,84 @@ class Document(dict):
                 super(Document, self).__repr__())
 
     def _asdict(self):
-        """ Internal method used by :mod:`simplejson` that we're leveraging to
-            do an automatic conversion of keys when serializing to JSON.
-
+        """ Return this document as a dictionary, with short key names mapped
+            to long names. This method is used by simplejson and
+            :meth:`pytools.json.as_json`.
         """
-        copy = {}
-        for key in self.keys():
-            if key in self._reverse:
-                copy[self._reverse[key]] = self[key]
+        # Get the reverse mapped keys
+        reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
+
+        def mapper(doc, submap):
+            copy = {}
+            for key, value in doc.items():
+                if isinstance(value, dict) and key in submap:
+                    copy[submap[key]] = mapper(value, submap[key])
+                elif key in submap:
+                    copy[submap[key]] = value
+                else:
+                    copy[key] = value
+
+            return copy
+
+        return mapper(self, reverse_name_map)
+
+    def __getattr__(self, name):
+        # Get the mapped attributes
+        name_map = object.__getattribute__(self, '_name_map')
+        # If the attribute is mapped, map it!
+        if name in name_map:
+            name_map = name_map[name]
+            # Check if we actually have a key for that value
+            if name_map in self:
+                value = self[name_map]
+                # If it's a dict, we need to keep mapping subkeys
+                if isinstance(value, dict):
+                    value = DictMap(value, name_map, self, name_map)
+                return value
+            elif isinstance(name_map, NameMap):
+                # Return an empty dict map to allow sub-key assignment
+                return DictMap({}, name_map, self, name_map)
             else:
-                copy[key] = self[key]
-        return copy
+                # Return none if a mapped attribute is missing
+                return None
+
+        # TODO: Decide whether to allow non-mapped keys via attribute access
+        object.__getattribute__(self, name)
+
+    def __setattr__(self, name, value):
+        # Get the mapped attributes
+        name_map = object.__getattribute__(self, '_name_map')
+        # If it's mapped, let's map it!
+        if name in name_map:
+            key = name_map[name]
+            if isinstance(key, NameMap):
+                key = key.key
+            # Assign the mapped key
+            self[key] = value
+            return
+
+        # TODO: Decide whether to allow non-mapped keys via attribute access
+        object.__setattr__(self, name, value)
+
+    def __delattr__(self, name):
+        # Get the mapped attributes
+        name_map = object.__getattribute__(self, '_name_map')
+        # If we have the key, we delete it
+        if name in name_map:
+            key = name_map[name]
+            if isinstance(key, NameMap):
+                key = key.key
+            del self[key]
+            return
+
+        object.__delattr__(self, name)
+
+    def __setitem__(self, key, value):
+        # Pymongo will attempt to use the document subclass for all embedded
+        # documents, which we don't want
+        if isinstance(value, Document):
+            value = dict(value)
+        super(Document, self).__setitem__(key, value)
 
     @classmethod
     def _ensure_indexes(cls):
@@ -453,7 +717,7 @@ class Document(dict):
             for index in cls.config_indexes:
                 logging.getLogger(__name__).info("Ensuring index: {}"
                         .format(index))
-                getattr(cls, 'collection').ensure_index(getattr(cls, index),
+                cls.collection.ensure_index(getattr(cls, index),
                         background=True,
                         ttl=60*60*24)
 
@@ -468,5 +732,4 @@ class Document(dict):
                     pyconfig.
                 """
                 cls.ensured = False
-
 

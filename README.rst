@@ -57,5 +57,10 @@ The two main parts to HumbleDB are the `Document` class and the `Mongo` class.
 Documentation
 -------------
 
-The complete documentation can be found on `http://humbledb.readthedocs.org`_.
+The complete documentation can be found on http://humbledb.readthedocs.org.
+
+License
+-------
+
+See LICENSE.rst.
 

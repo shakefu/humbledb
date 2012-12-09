@@ -13,8 +13,8 @@ Tutorial
 
 This tutorial will introduce you to the concepts and features of the HumbleDB
 micro-ODM and covers basic and advanced usage. It will teach you how to install
-HumbleDB, how to create :class:`Document` :class:`Mongo` subclasses that fit
-your needs, and the HumbleDB way of manipulating documents. The :doc:`api`
+HumbleDB, how to create :class:`Document` and :class:`Mongo` subclasses that
+fit your needs, and the HumbleDB way of manipulating documents. The :doc:`api`
 covers more details, but has less explanation.
 
 .. _installation:
@@ -77,6 +77,8 @@ set by assigning their attributes::
 In addition to any keys you specify, every Document is given a ``_id``
 attribute which maps to the ``'_id'`` key.
 
+.. _keys-and-values:
+
 .. rubric:: Accessing Keys and Values
 
 When you access a mapped key on your document class, it returns the key for
@@ -108,6 +110,8 @@ the current value of that key::
    >>> doc.value
    3.14159265358979
 
+.. _connecting:
+
 .. rubric:: Connecting to MongoDB
 
 The :class:`Mongo` class is a context manager which takes care of establishing
@@ -126,6 +130,8 @@ When doing any operation that hits the database, you always need to use the
 The Mongo context ensures any operations you do are within a single request
 (for consistency) and that the socket is released back to the connection pool
 as soon as possible (for concurrency).
+
+.. _collection-methods:
 
 .. rubric:: Working with a Collection
 
@@ -185,6 +191,7 @@ required attributes on a document are :attr:`~Document.config_database`, and
    doc = Basic({'key': 'value'})
    doc['key'] == 'value'
 
+.. _attribute-mapping:
 
 Attribute Mapping
 -----------------
@@ -205,7 +212,7 @@ returned (rather than raising an :exc:`AttributeError`), so you can easily
 check whether an attribute exists.
 
 When a document is inserted, its ``_id`` attribute is set to the created
-:class:`~bson.ObjectId`, if it wasn't already set.
+:class:`~bson.objectid.ObjectId`, if it wasn't already set.
 
 ::
 

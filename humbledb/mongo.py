@@ -58,7 +58,7 @@ class MongoMeta(type):
         if cls in Mongo.contexts:
             raise RuntimeError("Do not nest a connection within itself, it may "
                     "cause undefined behavior.")
-        if pyconfig.get('me.db.allow_explicit_request', True):
+        if pyconfig.get('humbledb.allow_explicit_request', True):
             cls.connection.start_request()
         Mongo.contexts.append(cls)
 
@@ -67,7 +67,7 @@ class MongoMeta(type):
             idempotent. This must always be called after :meth:`Mongo.start`
             to ensure the socket is returned to the connection pool.
         """
-        if pyconfig.get('me.db.allow_explicit_request', True):
+        if pyconfig.get('humbledb.allow_explicit_request', True):
             cls.connection.end_request()
         try:
             Mongo.contexts.pop()
@@ -127,10 +127,10 @@ class Mongo(object):
         return pymongo.ReplicaSetConnection(
                 host=cls.config_host,
                 port=cls.config_port,
-                max_pool_size=pyconfig.get('me.db.connection_pool', 10),
-                auto_start_request=pyconfig.get('me.db.auto_start_request',
+                max_pool_size=pyconfig.get('humbledb.connection_pool', 10),
+                auto_start_request=pyconfig.get('humbledb.auto_start_request',
                     True),
-                use_greenlets=pyconfig.get('me.db.use_greenlets', False),
+                use_greenlets=pyconfig.get('humbledb.use_greenlets', False),
                 tz_aware=True,
                 replicaSet=cls.config_replica,
                 )
@@ -148,10 +148,10 @@ class Mongo(object):
         return pymongo.Connection(
                 host=cls.config_host,
                 port=cls.config_port,
-                max_pool_size=pyconfig.get('me.db.connection_pool', 10),
-                auto_start_request=pyconfig.get('me.db.auto_start_request',
+                max_pool_size=pyconfig.get('humbledb.connection_pool', 10),
+                auto_start_request=pyconfig.get('humbledb.auto_start_request',
                     True),
-                use_greenlets=pyconfig.get('me.db.use_greenlets', False),
+                use_greenlets=pyconfig.get('humbledb.use_greenlets', False),
                 tz_aware=True)
 
     @classproperty

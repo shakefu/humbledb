@@ -172,7 +172,7 @@ collection's documents, but at their heart, they're just dictionaries. The only
 required attributes on a document are :attr:`~Document.config_database`, and
 :attr:`~Document.config_collection`.
 
-**Documents are dictionaries:**
+.. rubric:: Example: Documents are dictionaries
 
 ::
 
@@ -214,7 +214,10 @@ check whether an attribute exists.
 When a document is inserted, its ``_id`` attribute is set to the created
 :class:`~bson.objectid.ObjectId`, if it wasn't already set.
 
-::
+.. rubric:: Example: Attribute mapping
+
+.. code-block:: python
+   :emphasize-lines: 6
 
    class MyDoc(Document):
        config_database = 'humble'
@@ -251,8 +254,8 @@ When a document is inserted, its ``_id`` attribute is set to the created
    doc._id # ObjectId(...)
 
 
-Embedded Documents
-------------------
+Embedding Documents
+===================
 
 Attribute mapping to embedded documents is done via the :class:`Embed` class.
 Because a document is also a dictionary, using Embed is totally optional, but
@@ -267,7 +270,7 @@ When accessed via the class, an embedded document attribute returns the full
 dot-notation key name. If you want just the key name of the attribute, it is
 available as the attribute `key`.
 
-Of course, embedded documents are nestable.
+.. rubric:: Example: Embedded documents and nested documents
 
 ::
 
@@ -322,16 +325,153 @@ Of course, embedded documents are nestable.
    doc.embedded_doc                  # {'embed_key': {'my_key': "A Fish", 
                                      #     'nested_key': {'val: 42}}}
 
+.. rubric:: Example: A BlogPost class with embedded document
+
+.. code-block:: python
+   :emphasize-lines: 7
+
+   from humbledb import Document, Embed
+
+   class BlogPost(Document):
+       config_database = 'humble'
+       config_collection = 'posts'
+
+       meta = Embed('m')
+       meta.timestamp = 'ts'
+       meta.author = 'a'
+       meta.tags = 't'
+
+       title = 't'
+       preview = 'p'
+       content = 'c'
+
+As you can see using embedded documents here lets you keep your keys short, and
+your code clear and understandable.
+
+Querying, Updating and Deleting
+===============================
+
+TODO
+
+All the standard pymongo find/update/remove, etc., are mapped onto Document
+subclasses.
 
 Specifying Indexes
 ==================
 
-TODO
+Indexes are specified using the :attr:`Document.config_indexes` attribute.
+This attribute should be a list of attribute names to index. These names will
+be automatically mapped to their key names when the index call is made.  More
+complicated indexes with different sort ordering, uniqueness, or sparseness
+currently can't be created with HumbleDB's ``config_indexes``. This will change
+soon.
+
+HumbleDB uses an :meth:`~pymongo.collection.Collection.ensure_index` call with
+a TTL of 24 hours, and ``background=True``. This will be called before any
+:meth:`~pymongo.collection.Collection.find`, 
+:meth:`~pymongo.collection.Collection.find_one`, or
+:meth:`~pymongo.collection.Collection.find_and_modify` operation.
+
+.. rubric:: Example: Indexes on a BlogPost class
+
+.. code-block:: python
+   :emphasize-lines: 4
+
+   class BlogPost(Document):
+      config_database = 'humble'
+      config_collection = 'posts'
+      config_indexes = ['author', 'timestamp', 'tags']
+
+      timestamp = 'ts'
+      author = 'a'
+      tags = 'g'
+      title = 't'
+      content = 'c'
 
 .. _subclassing-mongo:
 
 Configuring Connections
 =======================
 
-TODO
+The :class:`Mongo` class provides a default connection for you, but what do you
+do if you need to connect to a different host, port, or a replica set? You 
+can subclass Mongo to change your settings to whatever you need. 
+
+Mongo subclasses are used as context managers, just like Mongo. Different
+Mongo subclasses can be nested within one another, should your code require it,
+however you cannot nest a connection within itself (this will raise a
+``RuntimeError``).
+
+.. rubric:: Connection Settings
+
+* **config_host** (``str``) - Hostname to connect to.
+* **config_port** (``int``) - Port to connect to.
+* **config_replica** (``str``, optional) - Name of the replica set.
+
+If ``config_replica`` is present on the class, then HumbleDB will automatically
+use a :class:`~pymongo.connection.ReplicaSetConnection` for you.
+
+.. rubric:: Global Connection Settings
+
+These settings are available globally through Pyconfig_ configuration keys. Use
+either :func:`Pyconfig.set` (i.e. ``pyconfig.set('humbledb.connection_pool',
+20)`` or create a Pyconfig_ plugin to change these.
+
+* **humbledb.connection_pool** (``int``, default: ``10``) - Size of the
+  connection pool to use.
+* **humbledb.allow_explicit_request** (``bool``, default: ``False``) - Whether
+  or not :meth:`Mongo.start` can be used to define a request, without using
+  Mongo as a context manager.
+* **humbledb.auto_start_request** (``bool``, default: ``True``) - Whether to
+  use ``auto_start_request`` with the :class:`~pymongo.connection.Connection`
+  instance.
+* **humbledb.use_greenlets** (``bool``, default: ``False``) - Whether to use
+  ``use_greenlets`` with the :class:`~pymongo.connection.Connection`
+  instance. (This is only needed if you intend on using threading and greenlets
+  at the same time.)
+
+More configuration settings are going to be added in the near future, so you
+can customize your :class:`~pymongo.connection.Connection` to completely suit
+your needs.
+
+.. rubric:: Example: Using different connection settings
+
+.. code-block:: python
+
+   from humbledb import Mongo
+
+   # A basic class which connects to a different host and port
+   class MyDB(Mongo):
+       config_hostname = 'mydb.example.com'
+       config_port = 3001
+
+   # A replica set class which will use a ReplicaSetConnection
+   class MyReplica(Mongo):
+       config_hostname = 'replica.example.com'
+       config_port = 3002
+       config_replica = 'RS1'
+
+   # Use your custom subclasses as context managers
+   with MyDB:
+       docs = MyDoc.find({MyDoc.value {'$gt': 3}})
+
+   # You can nest different connections when you need to
+   # (But you cannot nest the same connection)
+   with MyReplica:
+       values = MyGroup.find({MyGroup.tags: 'example'})
+       value = sum(doc['value'] for doc in values)
+
+       # HumbleDB allows you to nest different connections when you need
+       # consistency
+       with MyDoc:
+           doc = MyDoc()
+           doc.value = value
+           MyDoc.insert(doc)
+
+       MyGroup.update({MyGroup.tags: 'example'},
+               {'$push': {MyGroup.related: MyDoc._id},
+               multi=True)
+
+
+
 

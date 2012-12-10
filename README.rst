@@ -52,7 +52,7 @@ Quick Example
    >>> found.test_key
    u'Hello'
 
-The two main parts to HumbleDB are the `Document` class and the `Mongo` class.
+See the documentation for more examples and detailed explanations.
 
 Documentation
 -------------

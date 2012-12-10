@@ -492,11 +492,25 @@ class DocumentMeta(type):
 
     def _wrap(cls, func):
         """ Wraps ``func`` to ensure that it has the as_class keyword
-            argument set to ``cls``.
+            argument set to ``cls``. Also guarantees indexes.
 
             :param function func: Function to wrap.
 
         """
+        # We have to handle find_and_modify separately because it doesn't take
+        # a convenient as_class keyword argument, which is really too bad.
+        if func.__name__ == 'find_and_modify':
+            @wraps(func)
+            def wrapper(*args, **kwargs):
+                """ Wrapper function to gurantee object typing and indexes. """
+                cls._ensure_indexes()
+                doc = func(*args, **kwargs)
+                doc = cls(doc)
+                return doc
+            return wrapper
+
+        # If we've made it this far, it's not find_and_modify, and we can do a
+        # "normal" wrap.
         @wraps(func)
         def wrapper(*args, **kwargs):
             """ Wrapper function to guarantee indexes. """

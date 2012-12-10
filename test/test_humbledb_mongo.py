@@ -20,7 +20,6 @@ class _TestDoc(Document):
     config_database = DB_NAME
     config_collection = 'test_doc'
 
-    _id = '_id'
     user_name = 'u'
 
 
@@ -522,8 +521,6 @@ def test_embed_retrieval_types():
         config_database = DB_NAME
         config_collection = 'test'
 
-        _id = '_id'
-
     t = Retriever()
     t.embed.embed.attr = 'hello'
     with _TestDB:
@@ -552,4 +549,57 @@ def test_always_id_subclass():
         pass
 
     eq_(TestSub._id, '_id')
+
+
+def test_find_returns_same_class():
+    doc = _TestDoc()
+    doc.user_name = 'testing find'
+
+    with _TestDB:
+        _TestDoc.insert(doc)
+
+    ok_(doc._id)
+
+    with _TestDB:
+        doc = list(_TestDoc.find({_TestDoc._id: doc._id}))
+
+    ok_(doc)
+    doc = doc[0]
+    eq_(type(doc), _TestDoc)
+
+
+def test_find_one_returns_same_class():
+    doc = _TestDoc()
+    doc.user_name = 'testing find_one'
+
+    with _TestDB:
+        _TestDoc.insert(doc)
+
+    ok_(doc._id)
+
+    with _TestDB:
+        doc = _TestDoc.find_one({_TestDoc._id: doc._id})
+
+    ok_(doc)
+    eq_(doc.user_name, 'testing find_one')
+    eq_(type(doc), _TestDoc)
+
+
+def test_find_and_modify_returns_same_class():
+    doc = _TestDoc()
+    doc.user_name = 'testing find_and_modify'
+
+    with _TestDB:
+        _TestDoc.insert(doc)
+
+    ok_(doc._id)
+
+    with _TestDB:
+        doc = _TestDoc.find_and_modify({_TestDoc._id: doc._id},
+                {'$set': {_TestDoc.user_name: 'tested find_and_modify'}},
+                new=True)
+
+    ok_(doc)
+    eq_(doc.user_name, 'tested find_and_modify')
+    eq_(type(doc), _TestDoc)
 

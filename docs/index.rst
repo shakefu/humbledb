@@ -9,9 +9,9 @@
 .. _Pytool: http://pypi.python.org/pypi/pytool
 .. _Pyconfig: http://pypi.python.org/pypi/pyconfig
 .. _github: http://github.com/shakefu/humbledb
-.. _MongoEngine: http://
-.. _MongoAlchemy: http://
-.. _MiniMongo: http://
+.. _MongoEngine: http://mongoengine.org/
+.. _MongoAlchemy: http://www.mongoalchemy.org/
+.. _MiniMongo: https://github.com/slacy/minimongo
 
 
 ===========================

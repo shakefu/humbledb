@@ -400,6 +400,7 @@ class DocumentMeta(type):
         dir(pymongo.collection.Collection) if not name.startswith('_') and
         callable(getattr(pymongo.collection.Collection, name))])
     _wrapped_methods = set(['find', 'find_one', 'find_and_modify'])
+    _update = None
 
     # Helping pylint with identifying class attributes
     collection = None
@@ -520,13 +521,22 @@ class DocumentMeta(type):
             return func(*args, **kwargs)
         return wrapper
 
-    @property
-    def update(cls):
+    def _get_update(cls):
         """ Method to pass through the *dict*'s update method and instead use
             the collection method.
 
         """
-        return cls.collection.update
+        return cls._update or cls.collection.update
+
+    def _set_update(cls, value):
+        """ Method that allows setting of the update attribute for testing. """
+        cls._update = value
+
+    def _del_update(cls):
+        """ Method that allows deleting of the update attribute for testing. """
+        cls._update = None
+
+    update = property(_get_update, _set_update, _del_update)
 
 
 class Document(dict):
@@ -653,4 +663,3 @@ class Document(dict):
                     pyconfig.
                 """
                 cls.ensured = False
-

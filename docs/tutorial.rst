@@ -253,6 +253,39 @@ When a document is inserted, its ``_id`` attribute is set to the created
 
    doc._id # ObjectId(...)
 
+Introspecting Documents
+-----------------------
+
+Sometimes it's useful to be able to introspect a document schema to find out
+what attributes or keys are mapped. To do this, HumbleDB provides two methods,
+:meth:`Document.mapped_keys` and :meth:`Document.mapped_attributes`. These
+methods will return all the mapped dictionary keys and document attributes,
+respectively, excluding the ``_id`` key/attribute.
+
+.. rubric:: Example: Introspecting documents
+
+::
+
+   class MyDoc(Document):
+       config_database = 'humble'
+       config_collection = 'mydoc'
+
+       my_attr = 'k'
+       other_attr = 'o'
+
+   MyDoc.mapped_keys() # ['k', 'o']
+   MyDoc.mapped_attributes() # ['my_attr', 'other_attr']
+
+   # Mapping an arbitrary dict, while restricting keys
+   some_dict = {'spam': 'ham', 'k': True, 'o': "Hello"}
+   # Create an empty doc
+   doc = MyDoc()
+
+   # Iterate over the mapped keys, assigning common keys
+   for key in MyDoc.mapped_keys():
+       if key in some_dict:
+           doc[key] = some_dict[key]
+
 
 Embedding Documents
 ===================

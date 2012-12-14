@@ -603,3 +603,43 @@ def test_find_and_modify_returns_same_class():
     eq_(doc.user_name, 'tested find_and_modify')
     eq_(type(doc), _TestDoc)
 
+
+def test_mapped_keys():
+    class TestMapped(Document):
+        key1 = '1'
+        key2 = '2'
+        key3 = '3'
+
+    eq_(sorted(TestMapped.mapped_keys()), ['1', '2', '3'])
+
+
+def test_mapped_attributes():
+    class TestMapped(Document):
+        key1 = '1'
+        key2 = '2'
+        key3 = '3'
+
+    eq_(sorted(TestMapped.mapped_attributes()), ['key1', 'key2', 'key3'])
+
+
+def test_embed_mapped_keys():
+    class TestMapped(Document):
+        key1 = '1'
+        key2 = '2'
+        key3 = '3'
+
+        embed = Embed('e')
+
+    eq_(sorted(TestMapped.mapped_keys()), ['1', '2', '3', 'e'])
+
+
+def test_embed_mapped_attributes():
+    class TestMapped(Document):
+        key1 = '1'
+        key2 = '2'
+        key3 = '3'
+
+        embed = Embed('e')
+
+    eq_(sorted(TestMapped.mapped_attributes()),
+            ['embed', 'key1', 'key2', 'key3'])

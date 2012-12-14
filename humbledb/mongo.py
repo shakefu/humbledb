@@ -224,6 +224,10 @@ class NameMap(unicode):
         """ Return self.__dict__ minus any private keys. """
         return {k: v for k, v in self.__dict__.items() if not k.startswith('_')}
 
+    def mapped(self):
+        """ Return the mapped attributes. """
+        return self.filtered().keys()
+
     def merge(self, other):
         """ Merges another `.NameMap` instance into this one. """
         self.__dict__.update(other.filtered())
@@ -529,12 +533,20 @@ class DocumentMeta(type):
         return cls._update or cls.collection.update
 
     def _set_update(cls, value):
-        """ Method that allows setting of the update attribute for testing. """
+        """ Allows setting the update attribute for testing with mocks. """
         cls._update = value
 
     def _del_update(cls):
-        """ Method that allows deleting of the update attribute for testing. """
+        """ Allows deleting the update attribute for testing with mocks. """
         cls._update = None
+
+    def mapped_keys(cls):
+        """ Return a list of the mapped keys. """
+        return cls._reverse_name_map.mapped()
+
+    def mapped_attributes(cls):
+        """ Return a list of the mapped attributes. """
+        return cls._name_map.mapped()
 
     update = property(_get_update, _set_update, _del_update)
 

@@ -153,7 +153,7 @@ def test_ensure_indexes_called():
     with _TestDB:
         with mock.patch.object(Test, '_ensure_indexes') as _ensure:
             eq_(Test._ensure_indexes, _ensure)
-            Test.ensured = None
+            Test._ensured = None
             Test.find_one()
             _ensure.assert_called_once()
 
@@ -169,7 +169,7 @@ def test_ensure_indexes_calls_ensure_index():
     with _TestDB:
         with mock.patch.object(Test, 'collection') as coll:
             coll.find_one.__name__ = 'find_one'
-            Test.ensured = None
+            Test._ensured = None
             Test.find_one()
             coll.ensure_index.assert_called_with(
                     Test.user_name,
@@ -188,9 +188,9 @@ def test_ensure_indexes_reload_hook():
     with _TestDB:
         Test.find_one()
 
-    eq_(Test.ensured, True)
+    eq_(Test._ensured, True)
     pyconfig.reload()
-    eq_(Test.ensured, False)
+    eq_(Test._ensured, False)
 
 
 def test_wrap_methods():

@@ -652,7 +652,7 @@ class Document(dict):
     @classmethod
     def _ensure_indexes(cls):
         """ Guarantees indexes are created once per connection instance. """
-        ensured = getattr(cls, 'ensured', None)
+        ensured = getattr(cls, '_ensured', None)
         if ensured:
             return
 
@@ -665,7 +665,7 @@ class Document(dict):
                         ttl=60*60*24)
 
         logging.getLogger(__name__).info("Indexing ensured.")
-        cls.ensured = True
+        cls._ensured = True
 
         # Create a reload hook for the first time we run
         if ensured is None:
@@ -674,4 +674,4 @@ class Document(dict):
                 """ Allow index recreation if configuration settings change via
                     pyconfig.
                 """
-                cls.ensured = False
+                cls._ensured = False

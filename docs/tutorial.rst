@@ -475,12 +475,12 @@ your needs.
 
    # A basic class which connects to a different host and port
    class MyDB(Mongo):
-       config_hostname = 'mydb.example.com'
+       config_host = 'mydb.example.com'
        config_port = 3001
 
    # A replica set class which will use a ReplicaSetConnection
    class MyReplica(Mongo):
-       config_hostname = 'replica.example.com'
+       config_host = 'replica.example.com'
        config_port = 3002
        config_replica = 'RS1'
 

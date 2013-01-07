@@ -643,3 +643,13 @@ def test_embed_mapped_attributes():
 
     eq_(sorted(TestMapped.mapped_attributes()),
             ['embed', 'key1', 'key2', 'key3'])
+
+
+def test_find_and_modify_doesnt_error_when_none():
+    with _TestDB:
+        doc = _TestDoc.find_and_modify({_TestDoc._id: 'doesnt_exist'},
+                {'$set': {'foo': 1}})
+
+    eq_(doc, None)
+
+

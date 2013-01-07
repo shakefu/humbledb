@@ -397,6 +397,37 @@ class Embed(unicode):
         return name_map
 
 
+class Index(object):
+    """ This class is used to create more complex indices. """
+    def __init__(self, index, cache_for=60*60*24, background=True,
+            **kwargs):
+        self.index = index
+
+        kwargs['cache_for'] = cache_for
+        kwargs['backbround'] = background
+        self.kwargs = kwargs
+
+    def ensure(self, cls):
+        """ Does an ensure_index call for this index with the given `cls`.
+
+            :param cls: A Document subclass
+
+        """
+        # If it's a list or tuple, it includes direction
+        if isinstance(self.index, (tuple, list)):
+            index, direction = self.index
+        else:
+            index = self.index
+            direction = pymongo.ASCENDING
+
+        # Map the attribute name to its key name, or just let it ride
+        index = getattr(cls, index, index)
+
+        if not isinstance(index, basestring):
+            raise TypeError("Invalid index: {!r}".format(self.index))
+
+
+
 class DocumentMeta(type):
     """ Metaclass for Documents. """
     _ignore_attributes = set(['__test__'])
@@ -510,7 +541,9 @@ class DocumentMeta(type):
                 """ Wrapper function to gurantee object typing and indexes. """
                 cls._ensure_indexes()
                 doc = func(*args, **kwargs)
-                doc = cls(doc)
+                # If doc is not iterable (e.g. None), then this will error
+                if doc:
+                    doc = cls(doc)
                 return doc
             return wrapper
 

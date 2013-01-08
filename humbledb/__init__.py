@@ -26,6 +26,7 @@ from . import (
 from .mongo import (
         Document,
         Embed,
+        Index,
         Mongo,
         )
 

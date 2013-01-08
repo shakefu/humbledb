@@ -14,7 +14,7 @@ setup(
         author_email="jake@about.me",
         packages=find_packages(exclude=['test']),
         install_requires=[
-            'pymongo >= 2.2.1',
+            'pymongo >= 2.0.1',
             'pyconfig',
             'pytool >= 1.1.0',
             ],

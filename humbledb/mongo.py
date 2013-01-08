@@ -79,7 +79,7 @@ class MongoMeta(type):
         logging.getLogger(__name__).info("Reloading '{}'"
                 .format(cls.__name__))
         if cls._connection:
-            cls._connection.close()
+            cls._connection.disconnect()
         cls._connection = cls._new_connection()
 
     def __enter__(cls):
@@ -124,6 +124,11 @@ class Mongo(object):
         logging.getLogger(__name__).info("Creating new MongoDB connection to "
                 "'{}:{}' replica: {}".format(cls.config_host, cls.config_port,
                     cls.config_replica))
+
+        if pymongo.version < '2.1':
+            raise RuntimeError("Need pymongo.version >= 2.1 for "
+                    "ReplicaSetConnection.")
+
         return pymongo.ReplicaSetConnection(
                 host=cls.config_host,
                 port=cls.config_port,
@@ -399,12 +404,17 @@ class Embed(unicode):
 
 class Index(object):
     """ This class is used to create more complex indices. """
-    def __init__(self, index, cache_for=60*60*24, background=True,
-            **kwargs):
-        self.index = index
+    def __init__(self, index, cache_for=60*60*24, background=True, **kwargs):
+        # If it's a list or tuple, it includes direction
+        if isinstance(index, (tuple, list)):
+            self.index, self.direction = index
+        else:
+            self.index = index
+            self.direction = pymongo.ASCENDING
 
+        # Remerge kwargs
         kwargs['cache_for'] = cache_for
-        kwargs['backbround'] = background
+        kwargs['background'] = background
         self.kwargs = kwargs
 
     def ensure(self, cls):
@@ -413,19 +423,14 @@ class Index(object):
             :param cls: A Document subclass
 
         """
-        # If it's a list or tuple, it includes direction
-        if isinstance(self.index, (tuple, list)):
-            index, direction = self.index
-        else:
-            index = self.index
-            direction = pymongo.ASCENDING
-
+        index = self.index
         # Map the attribute name to its key name, or just let it ride
         index = getattr(cls, index, index)
 
         if not isinstance(index, basestring):
             raise TypeError("Invalid index: {!r}".format(self.index))
 
+        cls.collection.ensure_index([(index, self.direction)], **self.kwargs)
 
 
 class DocumentMeta(type):
@@ -693,9 +698,12 @@ class Document(dict):
             for index in cls.config_indexes:
                 logging.getLogger(__name__).info("Ensuring index: {}"
                         .format(index))
-                cls.collection.ensure_index(getattr(cls, index),
-                        background=True,
-                        ttl=60*60*24)
+                if isinstance(index, Index):
+                    index.ensure(cls)
+                else:
+                    cls.collection.ensure_index(getattr(cls, index),
+                            background=True,
+                            cache_for=60*60*24)
 
         logging.getLogger(__name__).info("Indexing ensured.")
         cls._ensured = True

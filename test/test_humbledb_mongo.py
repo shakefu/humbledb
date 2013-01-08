@@ -1,12 +1,17 @@
 import mock
 import pytool
+import pymongo
 import pyconfig
 
 from .util import *
-from humbledb import Mongo, Document, Embed
+from humbledb import Mongo, Document, Embed, Index
 
 
 DB_NAME = 'humbledb_nosetest'
+
+
+def teardown():
+    _TestDB.connection.drop_database(DB_NAME)
 
 
 # These names have to start with an underscore so nose ignores them, otherwise
@@ -18,7 +23,7 @@ class _TestDB(Mongo):
 
 class _TestDoc(Document):
     config_database = DB_NAME
-    config_collection = 'test_doc'
+    config_collection = 'test'
 
     user_name = 'u'
 
@@ -174,7 +179,7 @@ def test_ensure_indexes_calls_ensure_index():
             coll.ensure_index.assert_called_with(
                     Test.user_name,
                     background=True,
-                    ttl=60*60*24)
+                    cache_for=60*60*24)
 
 
 def test_ensure_indexes_reload_hook():
@@ -224,17 +229,23 @@ def test_asdict():
     eq_(_TestDoc({'u': 'test_name'})._asdict(), {'user_name': 'test_name'})
 
 
-@mock.patch('pymongo.ReplicaSetConnection')
-def test_replica(replica):
-    class Replica(Mongo):
-        config_host = 'localhost'
-        config_port = 27017
-        config_replica = 'test'
+def test_replica():
+    try:
+        with mock.patch('pymongo.ReplicaSetConnection') as replica:
+            class Replica(Mongo):
+                config_host = 'localhost'
+                config_port = 27017
+                config_replica = 'test'
 
-    with Replica:
-        pass
+            with Replica:
+                pass
 
-    replica.assert_called_once()
+            replica.assert_called_once()
+    except AttributeError, exc:
+        if pymongo.version < '2.1':
+            ok_('ReplicaSetConnection' in exc.message)
+        else:
+            raise
 
 
 def test_reconnect():
@@ -651,5 +662,82 @@ def test_find_and_modify_doesnt_error_when_none():
                 {'$set': {'foo': 1}})
 
     eq_(doc, None)
+
+
+def test_index_basic():
+    class Test(Document):
+        config_database = DB_NAME
+        config_collection = 'test'
+        config_indexes = [Index('user_name')]
+
+        user_name = 'u'
+
+    with _TestDB:
+        with mock.patch.object(Test, 'collection') as coll:
+            coll.find_one.__name__ = 'find_one'
+            Test._ensured = None
+            Test.find_one()
+            coll.ensure_index.assert_called_with(
+                    [(Test.user_name, pymongo.ASCENDING)],
+                    background=True,
+                    cache_for=60*60*24)
+
+
+def test_index_basic_sparse():
+    class Test(Document):
+        config_database = DB_NAME
+        config_collection = 'test'
+        config_indexes = [Index('user_name', sparse=True)]
+
+        user_name = 'u'
+
+    with _TestDB:
+        with mock.patch.object(Test, 'collection') as coll:
+            coll.find_one.__name__ = 'find_one'
+            Test._ensured = None
+            Test.find_one()
+            coll.ensure_index.assert_called_with(
+                    [(Test.user_name, pymongo.ASCENDING)],
+                    background=True,
+                    cache_for=60*60*24,
+                    sparse=True)
+
+
+def test_index_basic_directional():
+    class Test(Document):
+        config_database = DB_NAME
+        config_collection = 'test'
+        config_indexes = [Index(('user_name', pymongo.DESCENDING))]
+
+        user_name = 'u'
+
+    with _TestDB:
+        with mock.patch.object(Test, 'collection') as coll:
+            coll.find_one.__name__ = 'find_one'
+            Test._ensured = None
+            Test.find_one()
+            coll.ensure_index.assert_called_with(
+                    [(Test.user_name, pymongo.DESCENDING)],
+                    background=True,
+                    cache_for=60*60*24)
+
+
+def test_index_override_defaults():
+    class Test(Document):
+        config_database = DB_NAME
+        config_collection = 'test'
+        config_indexes = [Index('user_name', background=False, cache_for=60)]
+
+        user_name = 'u'
+
+    with _TestDB:
+        with mock.patch.object(Test, 'collection') as coll:
+            coll.find_one.__name__ = 'find_one'
+            Test._ensured = None
+            Test.find_one()
+            coll.ensure_index.assert_called_with(
+                    [(Test.user_name, pymongo.ASCENDING)],
+                    background=False,
+                    cache_for=60)
 
 

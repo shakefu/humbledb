@@ -23,7 +23,7 @@ covers more details, but has less explanation.
 Installation
 ============
 
-HumbleDB requires Pymongo_ (``>=2.2.1``), Pytool_ (``>=1.1.0``) and
+HumbleDB requires Pymongo_ (``>=2.0.1``), Pytool_ (``>=1.1.0``) and
 Pyconfig_. These are installed for you automatically when you install HumbleDB
 via pip or easy_install.
 
@@ -442,7 +442,8 @@ however you cannot nest a connection within itself (this will raise a
 * **config_replica** (``str``, optional) - Name of the replica set.
 
 If ``config_replica`` is present on the class, then HumbleDB will automatically
-use a :class:`~pymongo.connection.ReplicaSetConnection` for you.
+use a :class:`~pymongo.connection.ReplicaSetConnection` for you. (Requires 
+``pymongo >= 2.1``.)
 
 .. rubric:: Global Connection Settings
 

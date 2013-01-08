@@ -2,6 +2,7 @@
 """
 import logging
 import threading
+import pkg_resources
 from functools import wraps
 from collections import deque
 
@@ -125,7 +126,8 @@ class Mongo(object):
                 "'{}:{}' replica: {}".format(cls.config_host, cls.config_port,
                     cls.config_replica))
 
-        if pymongo.version < '2.1':
+        if (pkg_resources.parse_version(pymongo.version)
+                < pkg_resources.parse_version('2.1')):
             raise RuntimeError("Need pymongo.version >= 2.1 for "
                     "ReplicaSetConnection.")
 

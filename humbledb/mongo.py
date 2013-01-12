@@ -419,6 +419,24 @@ class Index(object):
         kwargs['background'] = background
         self.kwargs = kwargs
 
+    def _resolve_index(self, cls, index):
+        """ Resolves an index to its actual dot notation counterpart, or
+            returns the index as is.
+
+            :param cls: A Document subclass
+            :param str index: Index to resolve
+
+        """
+        attrs = index.split('.')
+        part = cls
+        while attrs:
+            attr = attrs.pop(0)
+            part = getattr(part, attr, UNSET)
+            if part is UNSET:
+                return index
+
+        return part
+
     def ensure(self, cls):
         """ Does an ensure_index call for this index with the given `cls`.
 
@@ -427,7 +445,7 @@ class Index(object):
         """
         index = self.index
         # Map the attribute name to its key name, or just let it ride
-        index = getattr(cls, index, index)
+        index = self._resolve_index(cls, index)
 
         if not isinstance(index, basestring):
             raise TypeError("Invalid index: {!r}".format(self.index))

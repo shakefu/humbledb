@@ -741,3 +741,29 @@ def test_index_override_defaults():
                     cache_for=60)
 
 
+def test_resolve_dotted_index():
+    class TestResolveIndex(_TestDoc):
+        meta = Embed('m')
+        meta.tag = 't'
+
+    eq_(Index('')._resolve_index(TestResolveIndex, 'meta'), 'm')
+    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.tag'), 'm.t')
+    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.foo'), 'meta.foo')
+
+
+def test_resolve_deep_dotted_index():
+    class TestResolveIndex(_TestDoc):
+        meta = Embed('m')
+        meta.deep = Embed('d')
+        meta.deep.deeper = Embed('d')
+        meta.deep.deeper.deeper_still = Embed('d')
+        meta.deep.deeper.deeper_still.tag = 't'
+
+    eq_(Index('m')._resolve_index(TestResolveIndex, 'meta.deep'), 'm.d')
+    eq_(Index('m')._resolve_index(TestResolveIndex, 'meta.deep.deeper'),
+            'm.d.d')
+    eq_(Index('m')._resolve_index(TestResolveIndex,
+        'meta.deep.deeper.deeper_still'), 'm.d.d.d')
+    eq_(Index('m')._resolve_index(TestResolveIndex,
+        'meta.deep.deeper.deeper_still.tag'), 'm.d.d.d.t')
+

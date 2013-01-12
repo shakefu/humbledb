@@ -759,11 +759,11 @@ def test_resolve_deep_dotted_index():
         meta.deep.deeper.deeper_still = Embed('d')
         meta.deep.deeper.deeper_still.tag = 't'
 
-    eq_(Index('m')._resolve_index(TestResolveIndex, 'meta.deep'), 'm.d')
-    eq_(Index('m')._resolve_index(TestResolveIndex, 'meta.deep.deeper'),
+    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.deep'), 'm.d')
+    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.deep.deeper'),
             'm.d.d')
-    eq_(Index('m')._resolve_index(TestResolveIndex,
+    eq_(Index('')._resolve_index(TestResolveIndex,
         'meta.deep.deeper.deeper_still'), 'm.d.d.d')
-    eq_(Index('m')._resolve_index(TestResolveIndex,
+    eq_(Index('')._resolve_index(TestResolveIndex,
         'meta.deep.deeper.deeper_still.tag'), 'm.d.d.d.t')
 

@@ -7,22 +7,14 @@ from .util import *
 from humbledb import Mongo, Document, Embed, Index
 
 
-DB_NAME = 'humbledb_nosetest'
-
-
 def teardown():
-    _TestDB.connection.drop_database(DB_NAME)
+    DBTest.connection.drop_database(database_name())
 
 
 # These names have to start with an underscore so nose ignores them, otherwise
 # it raises an error when trying to run the tests
-class _TestDB(Mongo):
-    config_host = 'localhost'
-    config_port = 27017
-
-
-class _TestDoc(Document):
-    config_database = DB_NAME
+class DocTest(Document):
+    config_database = database_name()
     config_collection = 'test'
 
     user_name = 'u'
@@ -40,20 +32,20 @@ class EmbedTestDoc(Document):
 
 
 def test_new():
-    assert_equal(_TestDB, _TestDB())
+    assert_equal(DBTest, DBTest())
 
 
 def test_delete():
-    n = _TestDoc()
+    n = DocTest()
     n.user_name = 'test'
-    ok_(_TestDoc.user_name in n)
+    ok_(DocTest.user_name in n)
     del n.user_name
-    eq_(_TestDoc.user_name in n, False)
+    eq_(DocTest.user_name in n, False)
 
 
 @raises(RuntimeError)
 def test_without_context():
-    _TestDoc.find_one()
+    DocTest.find_one()
 
 
 @raises(TypeError)
@@ -67,28 +59,28 @@ def test_missing_database():
     class Test(Document):
         config_collection = 'test'
 
-    with _TestDB:
+    with DBTest:
         Test.collection
 
 
 @raises(RuntimeError)
 def test_missing_collection():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
 
-    with _TestDB:
+    with DBTest:
         Test.collection
 
 
 @raises(AttributeError)
 def test_bad_attribute():
-    with _TestDB:
-        _TestDoc.foo
+    with DBTest:
+        DocTest.foo
 
 
 def test_ignore_method():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         def test(self):
             pass
@@ -97,7 +89,7 @@ def test_ignore_method():
 
 
 def test_unmapped_fields():
-    n = _TestDoc(foo='bar')
+    n = DocTest(foo='bar')
     ok_('foo' in n)
     eq_(n['foo'], 'bar')
     ok_('foo' in n._asdict())
@@ -117,7 +109,7 @@ def test_missing_config_port():
 
 
 def test_reload():
-    with mock.patch.object(_TestDB, '_new_connection') as _new_conn:
+    with mock.patch.object(DBTest, '_new_connection') as _new_conn:
         pyconfig.reload()
         _new_conn.assert_called_once()
 
@@ -127,35 +119,35 @@ def test_reload():
 
 @raises(RuntimeError)
 def test_nested_conn():
-    with _TestDB:
-        with _TestDB:
+    with DBTest:
+        with DBTest:
             pass
 
 
 def test_harmless_end():
     # This shouldn't raise any errors
-    _TestDB.end()
-    _TestDB.start()
-    _TestDB.end()
-    _TestDB.end()
+    DBTest.end()
+    DBTest.start()
+    DBTest.end()
+    DBTest.end()
 
 
 def test_instance_dictproxy_attr():
-    _doc = _TestDoc()
+    _doc = DocTest()
     _doc.user_name = 'value'
     eq_(_doc.user_name, 'value')
-    eq_(_TestDoc().user_name, None)
+    eq_(DocTest().user_name, None)
 
 
 def test_ensure_indexes_called():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         config_indexes = ['user_name']
 
         user_name = 'u'
 
-    with _TestDB:
+    with DBTest:
         with mock.patch.object(Test, '_ensure_indexes') as _ensure:
             eq_(Test._ensure_indexes, _ensure)
             Test._ensured = None
@@ -165,13 +157,13 @@ def test_ensure_indexes_called():
 
 def test_ensure_indexes_calls_ensure_index():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         config_indexes = ['user_name']
 
         user_name = 'u'
 
-    with _TestDB:
+    with DBTest:
         with mock.patch.object(Test, 'collection') as coll:
             coll.find_one.__name__ = 'find_one'
             Test._ensured = None
@@ -184,13 +176,13 @@ def test_ensure_indexes_calls_ensure_index():
 
 def test_ensure_indexes_reload_hook():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         config_indexes = ['user_name']
 
         user_name = 'u'
 
-    with _TestDB:
+    with DBTest:
         Test.find_one()
 
     eq_(Test._ensured, True)
@@ -199,34 +191,34 @@ def test_ensure_indexes_reload_hook():
 
 
 def test_wrap_methods():
-    with _TestDB:
-        with mock.patch.object(_TestDoc, '_wrap') as _wrap:
+    with DBTest:
+        with mock.patch.object(DocTest, '_wrap') as _wrap:
             _wrap.return_value = '_wrapper'
-            eq_(_TestDoc.find, _wrap.return_value)
+            eq_(DocTest.find, _wrap.return_value)
             _wrap.assert_called_once()
 
 
 def test_wrap_method_has_as_class():
-    with _TestDB:
-        with mock.patch.object(_TestDoc, 'collection') as coll:
+    with DBTest:
+        with mock.patch.object(DocTest, 'collection') as coll:
             coll.find.__name__ = 'find'
-            _TestDoc.find()
-            coll.find.assert_called_with(as_class=_TestDoc)
+            DocTest.find()
+            coll.find.assert_called_with(as_class=DocTest)
 
 
 def test_update_passthrough():
-    with _TestDB:
-        eq_(_TestDoc.collection.update, _TestDoc.update)
+    with DBTest:
+        eq_(DocTest.collection.update, DocTest.update)
 
 
 def test_document_repr():
     # Coverage all the coverage!
     d = {'foo': 'bar'}
-    eq_(repr(_TestDoc(d)), "_TestDoc({})".format(repr(d)))
+    eq_(repr(DocTest(d)), "DocTest({})".format(repr(d)))
 
 
 def test_asdict():
-    eq_(_TestDoc({'u': 'test_name'})._asdict(), {'user_name': 'test_name'})
+    eq_(DocTest({'u': 'test_name'})._asdict(), {'user_name': 'test_name'})
 
 
 def test_replica():
@@ -249,19 +241,19 @@ def test_replica():
 
 
 def test_reconnect():
-    with mock.patch.object(_TestDB, '_new_connection') as _new_conn:
-        _TestDB.reconnect()
+    with mock.patch.object(DBTest, '_new_connection') as _new_conn:
+        DBTest.reconnect()
         _new_conn.assert_called_once()
 
     # Have to reconnect again to get real connection instance back
-    _TestDB.reconnect()
+    DBTest.reconnect()
 
 
 
 def test_nonstring():
     _instance = object()
     class _TestNonString(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
 
         foo = 2
@@ -285,7 +277,7 @@ def test_nonstring():
 
 def test_property_attribute():
     class _TestProperty(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
 
         @property
@@ -300,29 +292,29 @@ def test_property_attribute():
 
 
 def test_inheritance():
-    class _TestDoc2(_TestDoc):
+    class DocTest2(DocTest):
         pass
 
-    eq_(_TestDoc2.user_name, _TestDoc.user_name)
-    eq_(_TestDoc2.config_database, _TestDoc.config_database)
-    eq_(_TestDoc2.config_collection, _TestDoc.config_collection)
+    eq_(DocTest2.user_name, DocTest.user_name)
+    eq_(DocTest2.config_database, DocTest.config_database)
+    eq_(DocTest2.config_collection, DocTest.config_collection)
 
     # This is to ensure the collection is accessible, e.g. not raising an error
-    with _TestDB:
-        _TestDoc2.collection
+    with DBTest:
+        DocTest2.collection
 
 
 def test_inheritance_combined():
-    class _TestDoc2(_TestDoc):
+    class DocTest2(DocTest):
         new_name = 'n'
 
-    eq_(_TestDoc2.new_name, 'n')
-    eq_(_TestDoc2.user_name, _TestDoc.user_name)
+    eq_(DocTest2.new_name, 'n')
+    eq_(DocTest2.user_name, DocTest.user_name)
 
 
 def test_classproperty_attribute():
     class _TestClassProp(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
 
         @pytool.lang.classproperty
@@ -335,8 +327,8 @@ def test_classproperty_attribute():
 
 def test_self_insertion():
     # This sounds dirty
-    t = _TestDoc()
-    with _TestDB:
+    t = DocTest()
+    with DBTest:
         type(t).insert(t)
 
     ok_(t._id)
@@ -344,14 +336,14 @@ def test_self_insertion():
 
 @raises(AttributeError)
 def test_collection_attributes_not_accessible_from_instance():
-    t = _TestDoc()
-    with _TestDB:
+    t = DocTest()
+    with DBTest:
         t.find
 
 
 def test_collection_accessible_from_instance():
-    t = _TestDoc()
-    with _TestDB:
+    t = DocTest()
+    with DBTest:
         t.collection
 
 
@@ -529,12 +521,12 @@ def test_embed_asdict():
 
 def test_embed_retrieval_types():
     class Retriever(EmbedTestDoc):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
 
     t = Retriever()
     t.embed.embed.attr = 'hello'
-    with _TestDB:
+    with DBTest:
         doc_id = Retriever.insert(t)
         doc = Retriever.find_one({Retriever._id: doc_id})
 
@@ -563,56 +555,56 @@ def test_always_id_subclass():
 
 
 def test_find_returns_same_class():
-    doc = _TestDoc()
+    doc = DocTest()
     doc.user_name = 'testing find'
 
-    with _TestDB:
-        _TestDoc.insert(doc)
+    with DBTest:
+        DocTest.insert(doc)
 
     ok_(doc._id)
 
-    with _TestDB:
-        doc = list(_TestDoc.find({_TestDoc._id: doc._id}))
+    with DBTest:
+        doc = list(DocTest.find({DocTest._id: doc._id}))
 
     ok_(doc)
     doc = doc[0]
-    eq_(type(doc), _TestDoc)
+    eq_(type(doc), DocTest)
 
 
 def test_find_one_returns_same_class():
-    doc = _TestDoc()
+    doc = DocTest()
     doc.user_name = 'testing find_one'
 
-    with _TestDB:
-        _TestDoc.insert(doc)
+    with DBTest:
+        DocTest.insert(doc)
 
     ok_(doc._id)
 
-    with _TestDB:
-        doc = _TestDoc.find_one({_TestDoc._id: doc._id})
+    with DBTest:
+        doc = DocTest.find_one({DocTest._id: doc._id})
 
     ok_(doc)
     eq_(doc.user_name, 'testing find_one')
-    eq_(type(doc), _TestDoc)
+    eq_(type(doc), DocTest)
 
 
 def test_find_and_modify_returns_same_class():
-    doc = _TestDoc()
+    doc = DocTest()
     doc.user_name = 'testing find_and_modify'
 
-    with _TestDB:
-        _TestDoc.insert(doc)
+    with DBTest:
+        DocTest.insert(doc)
 
     ok_(doc._id)
 
-    with _TestDB:
-        doc = _TestDoc.find_and_modify({_TestDoc._id: doc._id},
-                {'$set': {_TestDoc.user_name: 'tested find_and_modify'}},
+    with DBTest:
+        doc = DocTest.find_and_modify({DocTest._id: doc._id},
+                {'$set': {DocTest.user_name: 'tested find_and_modify'}},
                 new=True)
 
     ok_(doc)
     eq_(doc.user_name, 'tested find_and_modify')
-    eq_(type(doc), _TestDoc)
+    eq_(type(doc), DocTest)
 
 
 def test_mapped_keys():
@@ -657,8 +649,8 @@ def test_embed_mapped_attributes():
 
 
 def test_find_and_modify_doesnt_error_when_none():
-    with _TestDB:
-        doc = _TestDoc.find_and_modify({_TestDoc._id: 'doesnt_exist'},
+    with DBTest:
+        doc = DocTest.find_and_modify({DocTest._id: 'doesnt_exist'},
                 {'$set': {'foo': 1}})
 
     eq_(doc, None)
@@ -666,13 +658,13 @@ def test_find_and_modify_doesnt_error_when_none():
 
 def test_index_basic():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         config_indexes = [Index('user_name')]
 
         user_name = 'u'
 
-    with _TestDB:
+    with DBTest:
         with mock.patch.object(Test, 'collection') as coll:
             coll.find_one.__name__ = 'find_one'
             Test._ensured = None
@@ -685,13 +677,13 @@ def test_index_basic():
 
 def test_index_basic_sparse():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         config_indexes = [Index('user_name', sparse=True)]
 
         user_name = 'u'
 
-    with _TestDB:
+    with DBTest:
         with mock.patch.object(Test, 'collection') as coll:
             coll.find_one.__name__ = 'find_one'
             Test._ensured = None
@@ -705,13 +697,13 @@ def test_index_basic_sparse():
 
 def test_index_basic_directional():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         config_indexes = [Index(('user_name', pymongo.DESCENDING))]
 
         user_name = 'u'
 
-    with _TestDB:
+    with DBTest:
         with mock.patch.object(Test, 'collection') as coll:
             coll.find_one.__name__ = 'find_one'
             Test._ensured = None
@@ -724,13 +716,13 @@ def test_index_basic_directional():
 
 def test_index_override_defaults():
     class Test(Document):
-        config_database = DB_NAME
+        config_database = database_name()
         config_collection = 'test'
         config_indexes = [Index('user_name', background=False, cache_for=60)]
 
         user_name = 'u'
 
-    with _TestDB:
+    with DBTest:
         with mock.patch.object(Test, 'collection') as coll:
             coll.find_one.__name__ = 'find_one'
             Test._ensured = None
@@ -742,7 +734,7 @@ def test_index_override_defaults():
 
 
 def test_resolve_dotted_index():
-    class TestResolveIndex(_TestDoc):
+    class TestResolveIndex(DocTest):
         meta = Embed('m')
         meta.tag = 't'
 
@@ -752,7 +744,7 @@ def test_resolve_dotted_index():
 
 
 def test_resolve_deep_dotted_index():
-    class TestResolveIndex(_TestDoc):
+    class TestResolveIndex(DocTest):
         meta = Embed('m')
         meta.deep = Embed('d')
         meta.deep.deeper = Embed('d')

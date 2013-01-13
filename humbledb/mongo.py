@@ -4,7 +4,6 @@ import logging
 import threading
 import pkg_resources
 from functools import wraps
-from collections import deque
 
 import pymongo
 import pyconfig

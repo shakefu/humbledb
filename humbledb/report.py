@@ -104,8 +104,7 @@ class DailyReport(ReportBase):
 
         # Increment minute counter if we have minute resolution
         if self.config_resolution == self.MINUTE:
-            minute_key = '{}.{}.{}'.format(cls.minute, now.hour,
-                    now.hour * 60 + now.minute)
+            minute_key = '{}.{}.{}'.format(cls.minute, now.hour, now.minute)
             update[minute_key] = 1
 
         # Create our full update dict

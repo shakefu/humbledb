@@ -1,12 +1,12 @@
 API Documentation
-=================
+#################
 
 .. contents::
    :local:
-   :depth: 1
+   :depth: 2
 
-Document
---------
+Documents
+=========
 
 .. autoclass:: humbledb.document.Document
    :members:
@@ -16,25 +16,24 @@ Document
    .. automethod:: humbledb.document.Document.mapped_keys
    .. automethod:: humbledb.document.Document.mapped_attributes
 
-Embed
------
+Embedded Documents
+==================
 
 .. autoclass:: humbledb.document.Embed
    :members:
 
    See :ref:`embedding-documents` for more information.
 
-
-Index
------
+Indexes
+=======
 
 .. autoclass:: humbledb.index.Index
    :members:
 
    See :ref:`specifying-indexes` for more information.
 
-Mongo
------
+MongoDB Connections
+===================
 
 .. autoclass:: humbledb.mongo.Mongo
    :members:
@@ -43,4 +42,35 @@ Mongo
 
    .. automethod:: humbledb.mongo.Mongo.start
    .. automethod:: humbledb.mongo.Mongo.end
+
+Reports
+=======
+
+The report module contains the HumbleDB reporting framework.
+
+DailyReport
+-----------
+
+.. autoclass:: humbledb.report.DailyReport
+   :members:
+
+WeeklyReport
+------------
+
+.. autoclass:: humbledb.report.WeeklyReport
+   :members:
+MonthlyReport
+-------------
+
+.. autoclass:: humbledb.report.MonthlyReport
+   :members:
+
+Resolutions
+-----------
+
+.. autoattribute:: humbledb.report.MONTHLY
+.. autoattribute:: humbledb.report.WEEKLY
+.. autoattribute:: humbledb.report.DAILY
+.. autoattribute:: humbledb.report.HOUR
+.. autoattribute:: humbledb.report.MINUTE
 

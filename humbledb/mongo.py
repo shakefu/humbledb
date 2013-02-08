@@ -87,17 +87,31 @@ class MongoMeta(type):
 
 class Mongo(object):
     """
-    Singleton class for tracking/holding a single :class:`pymongo.Connection`.
-    It is necessary that there only be one connection instance for pymongo to
-    work properly with gevent.
+    Singleton context manager class for managing a single
+    :class:`pymongo.connection.Connection` instance.  It is necessary that
+    there only be one connection instance for pymongo to work efficiently with
+    gevent or threading by using its built in connection pooling.
 
-    This class also allows tracking whether we're in a session/context scope,
-    so that we can prevent :class:`Document` instances from accessing the
-    connection independently. This is so that we always ensure that
-    :meth:`~pymongo.connection.Connection.end_request` is always called to
-    release the socket back into the connection pool.
+    This class also manages connection scope, so that we can prevent
+    :class:`~humbledb.document.Document` instances from accessing the
+    connection outside the context manager scope. This is so that we always
+    ensure that :meth:`~pymongo.connection.Connection.end_request` is always
+    called to release the socket back into the connection pool, and to restrict
+    the scope where a socket is in use from the pool to the absolute minimum
+    necessary.
 
     This class is made to be thread safe.
+
+    Example subclass::
+
+        class MyConnection(Mongo):
+            config_host = 'cluster1.mongo.mydomain.com'
+            config_port = 27017
+
+    Example usage::
+
+        with MyConnection:
+            doc = MyDoc.find_one()
 
     """
     __metaclass__ = MongoMeta

@@ -137,8 +137,8 @@ as soon as possible (for concurrency).
 
 For your convenience, all of the :py:class:`pymongo.collection.Collection`
 methods are mapped onto your document class (but not onto class instances).
-Because these methods imply using the MongoDB connection, they're only available
-within a :class:`~humbledb.mongo.Mongo` context.
+Because these methods imply using the MongoDB connection, they're only
+available within a :class:`~humbledb.mongo.Mongo` context.
 
 Within a :class:`~humbledb.mongo.Mongo` context, all the
 :py:class:`~pymongo.collection.Collection` methods are available on your
@@ -414,10 +414,153 @@ your code clear and understandable.
 Querying, Updating and Deleting
 ===============================
 
-TODO
+.. currentmodule:: humbledb.mongo
 
 All the standard pymongo find/update/remove, etc., are mapped onto Document
-subclasses.
+subclasses, however these are only available within a :class:`Mongo` context.
+If you attempt to access the :attr:`~humbledb.document.Document.collection`
+attribute of a document outside a :class:`Mongo` context, a :exc:`RuntimeError`
+will be raised.
+
+.. rubric:: Document methods
+
+.. currentmodule:: humbledb.document
+
+For your convenience, all the methods of the :attr:`Document.collection` are
+mapped onto the document class.
+
+Here's a listing of all those methods as of :py:mod:`pymongo` 2.4:
+
+======================================================  ===============================================================  =================================================================
+:py:meth:`~pymongo.collection.Collection.aggregate`     :py:meth:`~pymongo.collection.Collection.find_and_modify`        :py:meth:`~pymongo.collection.Collection.options`
+:py:meth:`~pymongo.collection.Collection.count`         :py:meth:`~pymongo.collection.Collection.find_one`               :py:meth:`~pymongo.collection.Collection.reindex`
+:py:meth:`~pymongo.collection.Collection.create_index`  :py:meth:`~pymongo.collection.Collection.get_lasterror_options`  :py:meth:`~pymongo.collection.Collection.remove`
+:py:meth:`~pymongo.collection.Collection.distinct`      :py:meth:`~pymongo.collection.Collection.group`                  :py:meth:`~pymongo.collection.Collection.rename`
+:py:meth:`~pymongo.collection.Collection.drop`          :py:meth:`~pymongo.collection.Collection.index_information`      :py:meth:`~pymongo.collection.Collection.save`
+:py:meth:`~pymongo.collection.Collection.drop_index`    :py:meth:`~pymongo.collection.Collection.inline_map_reduce`      :py:meth:`~pymongo.collection.Collection.set_lasterror_options`
+:py:meth:`~pymongo.collection.Collection.drop_indexes`  :py:meth:`~pymongo.collection.Collection.insert`                 :py:meth:`~pymongo.collection.Collection.unset_lasterror_options`
+:py:meth:`~pymongo.collection.Collection.ensure_index`  :py:meth:`~pymongo.collection.Collection.map_reduce`             :py:meth:`~pymongo.collection.Collection.update`
+:py:meth:`~pymongo.collection.Collection.find`          
+======================================================  ===============================================================  =================================================================
+
+.. rubric:: Example: A blog post document
+
+This class is used for all the examples in this section.
+
+.. code-block:: python
+
+   # A basic blog post class for illustration
+   class BlogPost(Document):
+      config_database = 'humble'
+      config_collection = 'posts'
+      config_indexes = [Index('meta.url', unique=True)]
+
+      meta = Embed('m')
+      meta.tags = 't'
+      meta.published = 'p'
+      meta.url = 's'
+
+      author = 'a'
+      title = 't'
+      body = 'b'
+
+.. rubric:: Best practices
+
+Reference keys via their attributes when building query, update, or removal
+dictionaries. For example, use ``BlogPost.meta.tags`` rather than ``'m.t'``.
+This helps keep your code clean, readable, and avoids typos in string keys.
+
+.. code-block:: python
+   :emphasize-lines: 1,6
+
+   # GOOD
+   # Clear, typo-proof and highly readlable
+   with Mongo:
+      BlogPost.find({BlogPost.author: 'Humble'}).sort(BlogPost.meta.published)
+
+   # BAD
+   # Hard to read, prone to typos, and obfuscated
+   with Mongo:
+      BlogPost.find({'a': 'Humble'}).sort('m.p')
+
+
+.. rubric:: Creating, inserting, and updating documents
+
+If you're familiar with how Pymongo does inserting and updating, using HumbleDB
+will be much the same. The main difference is that HumbleDB lets you use
+attributes to reference the document keys, rather than using string keys.
+
+.. code-block:: python
+
+   # Creating a new post
+   post = BlogPost()
+   post.meta.tags = ['python', 'humbledb']
+   post.meta.url = 'using-humbledb'
+   post.author = "Humble"
+   post.title = "How to Use HumbleDB"
+   post.body = "Lorem ipsum, etc."
+
+   # Inserting a new post
+   with Mongo:
+      post_id = BlogPost.insert(post)
+
+   # Updating a post atomically
+   with Mongo:
+      BlogPost.update({BlogPost._id: post_id},
+         {'$set': {BlogPost.meta.published: datetime.now()}})
+
+   # Updating a post by retrieval
+   with Mongo:
+      post = BlogPost.find_one({BlogPost.meta.url: 'using-humbledb'})
+      post.meta.published = False
+      BlogPost.save(post)
+
+.. rubric:: Querying for documents
+
+Querying, like inserting and updating, works just like raw Pymongo, but with
+the convenience and readability of using attributes instead of string keys.
+
+.. code-block:: python
+
+   # Get all posts by an author
+   with Mongo:
+      posts = BlogPost.find({BlogPost.author: "Humble"})
+
+   # Get 10 most recent posts by an author
+   with Mongo:
+      posts = BlogPost.find({BlogPost.author: "Humble"})
+      posts = posts.sort(BlogPost.meta.published, humbledb.DESC)
+      posts = posts.limit(10)
+
+   # Get all unpublished posts
+   with Mongo:
+      posts = BlogPost.find({BlogPost.meta.published: {'$exists': False}})
+
+   # Get an individual post according to its URL
+   with Mongo:
+      post = BlogPost.find_one({BlogPost.meta.url: 'using-humbledb'})
+
+   # Unpublish a post and retrieve it
+   with Mongo:
+      post = BlogPost.find_and_modify({BlogPost.meta.url: 'using-humbledb'},
+            {'$unset': {BlogPost.meta.published: 1}}, new=True)
+
+   # Find all posts with a Python tag
+   with Mongo:
+      posts = BlogPost.find({BlogPost.meta.tags: 'python'})
+
+.. rubric:: Removing documents
+
+Removing works just like removing in Pymongo, but with the convenience of 
+using attributes rather than string keys. It's strongly recommended that you
+only use the ``_id`` key when removing items to prevent accidental removal.
+
+.. code-block:: python
+
+   # Remove an individual post
+   with Mongo:
+      BlogPost.remove({BlogPost._id: post_id})
+
 
 .. _specifying-indexes:
 
@@ -432,15 +575,18 @@ can be made using the :class:`~humbledb.index.Index` class, which takes the
 same areguments as :meth:`~pymongo.collection.Collection.ensure_index`.
 
 HumbleDB uses an :meth:`~pymongo.collection.Collection.ensure_index` call with
-a default TTL of 24 hours, and ``background=True``. This will be called before
-any :meth:`~pymongo.collection.Collection.find`,
+a default ``cache_for=`` of 24 hours, and ``background=True``. This will be
+called before any :meth:`~pymongo.collection.Collection.find`,
 :meth:`~pymongo.collection.Collection.find_one`, or
 :meth:`~pymongo.collection.Collection.find_and_modify` operation.
+
+.. versionadded:: 2.2
+   :class:`~humbledb.index.Index` class for complex indices.
 
 .. rubric:: Example: Indexes on a BlogPost class
 
 .. code-block:: python
-   :emphasize-lines: 4
+   :emphasize-lines: 4-5
 
    class BlogPost(Document):
       config_database = 'humble'

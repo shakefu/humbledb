@@ -14,8 +14,21 @@ from humbledb.maps import DictMap, NameMap
 
 class Embed(unicode):
     """ This class is used to map attribute names on embedded subdocuments.
+
+        Example usage::
+
+            class MyDoc(Document):
+                config_database = 'db'
+                config_collection = 'example'
+
+                embed = Embed('e')
+                embed.val = 'v'
+                embed.time = 't'
+
     """
     def as_name_map(self, base_name):
+        """ Return this object mapped onto :class:`~humbledb.maps.NameMap`
+        objects. """
         name_map = NameMap(base_name)
 
         for name, value in self.__dict__.items():
@@ -41,6 +54,8 @@ class Embed(unicode):
         return name_map
 
     def as_reverse_name_map(self, base_name):
+        """ Return this object mapped onto reverse-lookup
+        :class:`~humbledb.maps.NameMap` objects. """
         name_map = NameMap(base_name)
 
         for name, value in self.__dict__.items():
@@ -269,10 +284,26 @@ class Document(dict):
     """ This is the base class for a HumbleDB document. It should not be used
         directly, but rather configured via subclassing.
 
+        Example subclass::
+
+            class BlogPost(Document):
+                config_database = 'db'
+                config_collection = 'example'
+
+                meta = Embed('m')
+                meta.tags = 't'
+                meta.slug = 's'
+                meta.published = 'p'
+
+                author = 'a'
+                title = 't'
+                body = 'b'
+
     """
     __metaclass__ = DocumentMeta
 
     collection = None
+    """ :class:`pymongo.collection.Collection` instance for this document. """
 
     config_database = None
     """ Database name for this document. """

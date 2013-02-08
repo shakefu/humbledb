@@ -7,6 +7,14 @@ import pytool
 from humbledb import Document, Embed, Index
 
 
+# Resolutions for reports
+MONTHLY = 5
+WEEKLY = 4
+DAILY = 3
+HOUR = 2
+MINUTE = 1
+
+
 class ReportBase(Document):
     """ Superclass for common report methods and fields. """
     # These are just default indexes, but they can be overridden
@@ -57,16 +65,10 @@ class ReportBase(Document):
 
 class DailyReport(ReportBase):
     """ Reports which are aggregated on a daily basis. """
-    # Constants used for resolution
-    DAILY = 3
-    HOUR = 2
-    MINUTE = 1
-
     config_resolution = MINUTE
     """ When subclassed, the `config_resolution` may be set to one of
-        :attr:`DailyReport.DAILY`, :attr:`DailyReport.HOUR`,
-        :attr:`DailyReport.MINUTE`, to indicate how precise this record should
-        be.
+        :attr:`DAILY`, :attr:`HOUR`, :attr:`MINUTE`, to indicate how precise
+        this record should be.
     """
 
     daily = 'd'
@@ -90,7 +92,7 @@ class DailyReport(ReportBase):
         # Start with an empty dictionary, which will become our $inc dict
         update = {}
 
-        if self.config_resolution > self.DAILY:
+        if self.config_resolution > DAILY:
             raise ValueError("'config_resolution' is not set to a valid "
                     "value.")
 
@@ -98,12 +100,12 @@ class DailyReport(ReportBase):
         update[cls.daily] = 1
 
         # Increment hour counter if we have at least hourly resolution
-        if self.config_resolution <= self.HOUR:
+        if self.config_resolution <= HOUR:
             hour_key = '{}.{}'.format(cls.hour, now.hour)
             update[hour_key] = 1
 
         # Increment minute counter if we have minute resolution
-        if self.config_resolution == self.MINUTE:
+        if self.config_resolution == MINUTE:
             minute_key = '{}.{}.{}'.format(cls.minute, now.hour, now.minute)
             update[minute_key] = 1
 
@@ -115,15 +117,10 @@ class DailyReport(ReportBase):
 
 class WeeklyReport(ReportBase):
     """ Reports which are aggregated on a weekly basis. """
-    WEEKLY = 3
-    DAY = 2
-    HOUR = 1
-
     config_resolution = HOUR
     """ When subclassed, the `config_resolution` may be set to one of
-        :attr:`WeeklyReport.WEEKLY`, :attr:`WeeklyReport.DAY`, or
-        :attr:`WeeklyReport.HOUR` to indicate how precise this record should
-        be.
+        :attr:`WEEKLY`, :attr:`DAILY`, or :attr:`HOUR` to indicate how precise
+        this record should be.
     """
 
     weekly = 'w'
@@ -147,7 +144,7 @@ class WeeklyReport(ReportBase):
         # Create our $inc dict
         update = {}
 
-        if self.config_resolution > self.WEEKLY:
+        if self.config_resolution > WEEKLY:
             raise ValueError("'config_resolution' is not set to a valid "
                     "value.")
 
@@ -155,12 +152,12 @@ class WeeklyReport(ReportBase):
         update[cls.weekly] = 1
 
         # Increment day counter if we have at least daily resolution
-        if self.config_resolution <= self.DAY:
+        if self.config_resolution <= DAILY:
             day_key = '{}.{}'.format(cls.day, now.day)
             update[day_key] = 1
 
         # Increment hour counter if we have hour resolution
-        if self.config_resolution == self.HOUR:
+        if self.config_resolution == HOUR:
             hour_key = '{}.{}.{}'.format(cls.hour, now.day, now.hour)
             update[hour_key] = 1
 
@@ -172,15 +169,10 @@ class WeeklyReport(ReportBase):
 
 class MonthlyReport(ReportBase):
     """ Reports which are aggregated on a monthly basis. """
-    MONTHLY = 3
-    DAY = 2
-    HOUR = 1
-
     config_resolution = HOUR
     """ When subclassed, the `config_resolution` may be set to one of
-        :attr:`MonthlyReport.MONTHLY`, :attr:`MonthlyReport.DAY`, or
-        :attr:`MonthlyReport.HOUR` to indicate how precise this record should
-        be.
+        :attr:`MONTHLY`, :attr:`DAILY`, or :attr:`HOUR` to indicate how
+        precise this record should be.
     """
 
     monthly = 'm'
@@ -204,7 +196,7 @@ class MonthlyReport(ReportBase):
         # Create our $inc dict
         update = {}
 
-        if self.config_resolution > self.MONTHLY:
+        if self.config_resolution > MONTHLY:
             raise ValueError("'config_resolution' is not set to a valid "
                     "value.")
 
@@ -212,12 +204,12 @@ class MonthlyReport(ReportBase):
         update[cls.monthly] = 1
 
         # Increment day counter if we have at least daily resolution
-        if self.config_resolution <= self.DAY:
+        if self.config_resolution <= DAILY:
             day_key = '{}.{}'.format(cls.day, now.day)
             update[day_key] = 1
 
         # Increment hour counter if we have hour resolution
-        if self.config_resolution == self.HOUR:
+        if self.config_resolution == HOUR:
             hour_key = '{}.{}.{}'.format(cls.hour, now.day, now.hour)
             update[hour_key] = 1
 
@@ -225,5 +217,4 @@ class MonthlyReport(ReportBase):
         update = {'$inc': update}
 
         return update
-
 

@@ -4,7 +4,9 @@ from pytool.lang import UNSET
 
 
 class Index(object):
-    """ This class is used to create more complex indices.
+    """ This class is used to create more complex indices. Takes the same
+        arguments and keyword arguments as
+        :meth:`~pymongo.collection.Collection.ensure_index`.
 
         Example::
 

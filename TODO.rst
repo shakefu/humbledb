@@ -6,7 +6,6 @@ Here's a list of stuff that needs doing:
 Documentation
 -------------
 
-- Add documentation for Index
 - Add documentation for Querying, Updating, Deleting
 - Add documentation for Reports
 - Update changelog

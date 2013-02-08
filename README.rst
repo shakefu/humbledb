@@ -1,7 +1,7 @@
 HumbleDB - MongoDB Object-Document Mapper
 =========================================
 
-HumbleDB is an extremely lightweight ODB that works with pymongo to provide a
+HumbleDB is an extremely lightweight ODM that works with pymongo to provide a
 convenient and easy to use interface. It enforces strict explictness when a
 connection to a MongoDB cluster or replica set is being used, by disallowing
 any read or write interaction outside of a context manager's context block.

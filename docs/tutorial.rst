@@ -427,13 +427,13 @@ Specifying Indexes
 Indexes are specified using the
 :attr:`~humbledb.document.Document.config_indexes` attribute.  This attribute
 should be a list of attribute names to index. These names will be automatically
-mapped to their key names when the index call is made.  More complicated
-indexes with different sort ordering, uniqueness, or sparseness currently can't
-be created with HumbleDB's ``config_indexes``. This will change soon.
+mapped to their key names when the index call is made. More complicated indexes
+can be made using the :class:`~humbledb.index.Index` class, which takes the
+same areguments as :meth:`~pymongo.collection.Collection.ensure_index`.
 
 HumbleDB uses an :meth:`~pymongo.collection.Collection.ensure_index` call with
-a TTL of 24 hours, and ``background=True``. This will be called before any
-:meth:`~pymongo.collection.Collection.find`, 
+a default TTL of 24 hours, and ``background=True``. This will be called before
+any :meth:`~pymongo.collection.Collection.find`,
 :meth:`~pymongo.collection.Collection.find_one`, or
 :meth:`~pymongo.collection.Collection.find_and_modify` operation.
 
@@ -445,12 +445,14 @@ a TTL of 24 hours, and ``background=True``. This will be called before any
    class BlogPost(Document):
       config_database = 'humble'
       config_collection = 'posts'
-      config_indexes = ['author', 'timestamp', 'tags']
+      config_indexes = ['author', 'timestamp', Index('tags', sparse=True),
+            Index([('slug', humbledb.DESC)], unique=True)]
 
       timestamp = 'ts'
       author = 'a'
       tags = 'g'
       title = 't'
+      slug = 's'
       content = 'c'
 
 .. _subclassing-mongo:

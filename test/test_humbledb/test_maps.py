@@ -5,10 +5,12 @@ from humbledb import Document, Embed
 def teardown():
     DBTest.connection.drop_database(database_name())
 
+
 class MapTest(Document):
     em = Embed('e')
     em.val = 'v'
     val = 'v'
+
 
 def test_mapped_keys():
     class TestMapped(Document):
@@ -61,7 +63,7 @@ def test_embed_non_string_values_are_not_mapped():
     eq_(getattr(TestMapped.embed, 'bad', -1), -1)
 
 
-def test_embed_non_string_values_are_not_mapped():
+def test_embed_private_values_are_not_mapped():
     class TestMapped(Document):
         embed = Embed('e')
         embed.good = 'g'

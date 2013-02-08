@@ -571,8 +571,8 @@ def test_unpatching_document_update_works_nicely():
         original_update = DocTest.update
         with mock.patch.object(DocTest, 'update') as update:
             update.return_value = 'updated'
-            value = DocTest.update({DocTest._id: 1}, {'$set': {DocTest.user_name:
-                'hello'}})
+            value = DocTest.update({DocTest._id: 1}, {'$set':
+                {DocTest.user_name: 'hello'}})
             eq_(value, 'updated')
         eq_(DocTest.update, original_update)
 

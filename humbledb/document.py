@@ -161,7 +161,24 @@ class DocumentMeta(type):
         # Create collection attribute
         cls_dict['collection'] = CollectionAttribute()
 
-        return type.__new__(mcs, cls_name, bases, cls_dict)
+        # Create the class
+        cls = type.__new__(mcs, cls_name, bases, cls_dict)
+
+        # Check all the indexes
+        indexes = getattr(cls, 'config_indexes', None)
+        if indexes is not None:
+            if not isinstance(indexes, list):
+                raise TypeError("'config_indexes' must be a list")
+            for i in xrange(len(indexes)):
+                index = indexes[i]
+                if isinstance(index, basestring):
+                    indexes[i] = Index(index)
+                    continue
+                elif isinstance(index, Index):
+                    index._resolve_index(cls)
+
+        # Return the class if everything worked out OK
+        return cls
 
     def __getattr__(cls, name):
         # Some attributes need to raise an error properly

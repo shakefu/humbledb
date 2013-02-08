@@ -30,7 +30,7 @@ def test_cloned_cursor_returns_correct_type():
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})
-        # Get the cursor 
+        # Get the cursor
         cursor = DocTest.find()
         is_instance_(cursor[0], DocTest)
         # Check the clone
@@ -42,7 +42,7 @@ def test_copy_of_cursor_returns_correct_type():
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})
-        # Get the cursor 
+        # Get the cursor
         cursor = DocTest.find()
         is_instance_(cursor[0], DocTest)
         # Check the clone
@@ -54,7 +54,7 @@ def test_deepcopy_of_cursor_returns_correct_type():
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})
-        # Get the cursor 
+        # Get the cursor
         cursor = DocTest.find()
         is_instance_(cursor[0], DocTest)
         # Check the clone

@@ -123,6 +123,7 @@ User's Guide
 
    tutorial
    api
+   changes
 
 .. include:: ../LICENSE.rst
    

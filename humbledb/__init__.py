@@ -21,9 +21,24 @@ limitations under the License.
 __version__ = '3.0.0-dev'
 
 
+__all__ = [
+        'Index',
+        'Mongo',
+        'Document',
+        'Embed',
+        'report',
+        'ASC',
+        'DESC',
+        ]
+
 from .index import Index
 from .mongo import Mongo
 from .document import Document, Embed
 # This needs to be imported last or it causes with circular imports
 from . import report
+
+# Shortcuts to pymongo index directions
+import pymongo
+DESC = pymongo.DESCENDING
+ASC = pymongo.ASCENDING
 

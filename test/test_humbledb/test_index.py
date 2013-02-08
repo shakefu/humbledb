@@ -1,7 +1,7 @@
 
 import mock
-import pymongo
 
+import humbledb
 from ..util import *
 from humbledb import Document, Embed, Index
 
@@ -60,7 +60,7 @@ def test_index_basic_directional():
     class Test(Document):
         config_database = database_name()
         config_collection = 'test'
-        config_indexes = [Index([('user_name', pymongo.DESCENDING)])]
+        config_indexes = [Index([('user_name', humbledb.DESC)])]
 
         user_name = 'u'
 
@@ -70,7 +70,7 @@ def test_index_basic_directional():
             Test._ensured = None
             Test.find_one()
             coll.ensure_index.assert_called_with(
-                    [(Test.user_name, pymongo.DESCENDING)],
+                    [(Test.user_name, humbledb.DESC)],
                     background=True,
                     cache_for=60*60*24)
 
@@ -99,9 +99,9 @@ def test_resolve_dotted_index():
         meta = Embed('m')
         meta.tag = 't'
 
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta'), 'm')
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.tag'), 'm.t')
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.foo'), 'meta.foo')
+    eq_(Index('meta')._resolve_index(TestResolveIndex), 'm')
+    eq_(Index('meta.tag')._resolve_index(TestResolveIndex), 'm.t')
+    eq_(Index('meta.foo')._resolve_index(TestResolveIndex), 'meta.foo')
 
 
 def test_resolve_deep_dotted_index():
@@ -112,21 +112,20 @@ def test_resolve_deep_dotted_index():
         meta.deep.deeper.deeper_still = Embed('d')
         meta.deep.deeper.deeper_still.tag = 't'
 
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.deep'), 'm.d')
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.deep.deeper'),
-            'm.d.d')
-    eq_(Index('')._resolve_index(TestResolveIndex,
-        'meta.deep.deeper.deeper_still'), 'm.d.d.d')
-    eq_(Index('')._resolve_index(TestResolveIndex,
-        'meta.deep.deeper.deeper_still.tag'), 'm.d.d.d.t')
+    eq_(Index('meta.deep')._resolve_index(TestResolveIndex), 'm.d')
+    eq_(Index('meta.deep.deeper')._resolve_index(TestResolveIndex), 'm.d.d')
+    eq_(Index('meta.deep.deeper.deeper_still')._resolve_index(
+        TestResolveIndex), 'm.d.d.d')
+    eq_(Index('meta.deep.deeper.deeper_still.tag')._resolve_index(
+        TestResolveIndex), 'm.d.d.d.t')
 
 
 def test_resolve_compound_index():
     class Test(Document):
         config_database = database_name()
         config_collection = 'test'
-        config_indexes = [Index([('user_name', pymongo.ASCENDING), ('compound',
-            pymongo.DESCENDING)])]
+        config_indexes = [Index([('user_name', humbledb.ASC), ('compound',
+            humbledb.DESC)])]
 
         user_name = 'u'
         compound = 'c'
@@ -138,11 +137,10 @@ def test_resolve_compound_index():
             Test._ensured = None
             Test.find_one()
             coll.ensure_index.assert_called_with(
-                    [(Test.user_name, pymongo.ASCENDING), (Test.compound,
-                        pymongo.DESCENDING)],
+                    [(Test.user_name, humbledb.ASC), (Test.compound,
+                        humbledb.DESC)],
                     background=True,
                     cache_for=60*60*24)
-
 
 
 @raises(TypeError)
@@ -161,6 +159,7 @@ def test_resolve_non_string_attribute_fails():
             Test._ensured = None
             Test.find_one()
             coll.ensure_index.assert_not_called()
+
 
 @raises(TypeError)
 def test_badly_formed_index_raises_error():

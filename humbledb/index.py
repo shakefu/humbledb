@@ -1,6 +1,5 @@
 """
 """
-import pymongo
 from pytool.lang import UNSET
 
 
@@ -34,13 +33,12 @@ class Index(object):
             :param cls: A Document subclass
 
         """
-        index = self.index
         # Map the attribute name to its key name, or just let it ride
-        index = self._resolve_index(cls, index)
+        index = self._resolve_index(cls)
         # Make the ensure index call
         cls.collection.ensure_index(index, **self.kwargs)
 
-    def _resolve_index(self, cls, index):
+    def _resolve_index(self, cls):
         """ Resolves an index to its actual dot notation counterpart, or
             returns the index as is.
 
@@ -49,16 +47,17 @@ class Index(object):
 
         """
         # If we have just a string, it's a simple index
-        if isinstance(index, basestring):
-            return self._resolve_name(cls, index)
+        if isinstance(self.index, basestring):
+            return self._resolve_name(cls, self.index)
 
         # Otherwise it must be an iterable
-        for i in xrange(len(index)):
-            if len(index[i]) != 2:
-                raise TypeError("Invalid index: {!r}".format(index))
-            index[i] = (self._resolve_name(cls, index[i][0]), index[i][1])
+        for i in xrange(len(self.index)):
+            pair = self.index[i]
+            if len(pair) != 2:
+                raise TypeError("Invalid index: {!r}".format(self.index))
+            self.index[i] = (self._resolve_name(cls, pair[0]), pair[1])
 
-        return index
+        return self.index
 
     def _resolve_name(self, cls, name):
         """ Resolve a dot notation index name to its real document keys. """

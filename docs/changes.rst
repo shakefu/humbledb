@@ -59,3 +59,14 @@ This section contains all the changes that I can remember, by version.
 -----
 
 - Fix bug where find_and_modify returned dict instead of Document subclass.
+
+2.0.1
+-----
+
+- Updated documentation.
+
+2.0.0
+-----
+
+- First release fit for public consumption.
+

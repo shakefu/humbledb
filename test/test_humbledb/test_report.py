@@ -1,13 +1,30 @@
-import mock
 import pytool
-import pyconfig
 
-from .util import *
-from humbledb.report import DailyReport, WeeklyReport, MonthlyReport
+from ..util import *
+from humbledb.report import (DailyReport, WeeklyReport, MonthlyReport,
+        ReportBase)
 
 
 def teardown():
     DBTest.connection.drop_database(database_name())
+
+
+@raises(NotImplementedError)
+def test_bad_subclass_raises_error():
+    class BadReport(ReportBase):
+        def get_id(self, event):
+            return None
+
+    BadReport().record('test')
+
+
+@raises(NotImplementedError)
+def test_other_bad_subclass_raises_error():
+    class BadReport(ReportBase):
+        def floor_date(self, stamp):
+            return None
+
+    BadReport().record('test')
 
 
 class DailyReportTest(DailyReport):
@@ -81,5 +98,3 @@ def test_daily_report_has_correct_metadata():
         r = DailyReportTest.find_one({DailyReportTest.meta.event: 'test2'})
         eq_(r.meta.event, 'test2')
         eq_(r.meta.date, pytool.time.floor_day(now))
-
-

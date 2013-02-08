@@ -1,8 +1,6 @@
 API Documentation
 =================
 
-.. currentmodule:: humbledb.mongo
-
 .. contents::
    :local:
    :depth: 1
@@ -10,24 +8,39 @@ API Documentation
 Document
 --------
 
-.. autoclass:: Document
+.. autoclass:: humbledb.document.Document
    :members:
 
-   .. automethod:: mapped_keys
-   .. automethod:: mapped_attributes
+   See :ref:`documents` for more information.
+
+   .. automethod:: humbledb.document.Document.mapped_keys
+   .. automethod:: humbledb.document.Document.mapped_attributes
 
 Embed
 -----
 
-.. autoclass:: Embed
+.. autoclass:: humbledb.document.Embed
    :members:
+
+   See :ref:`embedding-documents` for more information.
+
+
+Index
+-----
+
+.. autoclass:: humbledb.index.Index
+   :members:
+
+   See :ref:`specifying-indexes` for more information.
 
 Mongo
 -----
 
-.. autoclass:: Mongo
+.. autoclass:: humbledb.mongo.Mongo
    :members:
 
-   .. automethod:: start
-   .. automethod:: end
+   See :ref:`subclassing-mongo` for more information.
+
+   .. automethod:: humbledb.mongo.Mongo.start
+   .. automethod:: humbledb.mongo.Mongo.end
 

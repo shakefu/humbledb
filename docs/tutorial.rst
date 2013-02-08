@@ -1,5 +1,4 @@
 .. highlight:: python
-.. currentmodule:: humbledb.mongo
 
 .. _PyPI: http://pypi.python.org/pypi/humbledb
 .. _Pymongo: http://api.mongodb.org/python/current/
@@ -13,9 +12,10 @@ Tutorial
 
 This tutorial will introduce you to the concepts and features of the HumbleDB
 micro-ODM and covers basic and advanced usage. It will teach you how to install
-HumbleDB, how to create :class:`Document` and :class:`Mongo` subclasses that
-fit your needs, and the HumbleDB way of manipulating documents. The :doc:`api`
-covers more details, but has less explanation.
+HumbleDB, how to create :class:`~humbledb.document.Document` and
+:class:`~humbedb.mongo.Mongo` subclasses that fit your needs, and the HumbleDB
+way of manipulating documents. The :doc:`api` covers more details, but has less
+explanation.
 
 .. _installation:
 
@@ -114,13 +114,13 @@ the current value of that key::
 
 .. rubric:: Connecting to MongoDB
 
-The :class:`Mongo` class is a context manager which takes care of establishing
-a :py:class:`pymongo.connection.Connection` instance for you. By default, the
-Mongo class will connect to ``'localhost'``, port ``27017`` (see
-:ref:`subclassing-mongo` if you need different settings).
+The :class:`~humbledb.mongo.Mongo` class is a context manager which takes care
+of establishing a :py:class:`pymongo.connection.Connection` instance for you.
+By default, the Mongo class will connect to ``'localhost'``, port ``27017``
+(see :ref:`subclassing-mongo` if you need different settings).
 
 When doing any operation that hits the database, you always need to use the
-:mod:`with <contextlib>` statement with :class:`Mongo` (or a
+:mod:`with <contextlib>` statement with :class:`~humbledb.mongo.Mongo` (or a
 :ref:`subclass <subclassing-mongo>`)::
 
    with Mongo:
@@ -138,9 +138,9 @@ as soon as possible (for concurrency).
 For your convenience, all of the :py:class:`pymongo.collection.Collection`
 methods are mapped onto your document class (but not onto class instances).
 Because these methods imply using the MongoDB connection, they're only available
-within a :class:`Mongo` context.
+within a :class:`~humbledb.mongo.Mongo` context.
 
-Within a :class:`Mongo` context, all the
+Within a :class:`~humbledb.mongo.Mongo` context, all the
 :py:class:`~pymongo.collection.Collection` methods are available on your
 document class::
 
@@ -154,8 +154,8 @@ Without a context, a :py:exc:`RuntimeError` is raised::
       ...
    RuntimeError: 'collection' not available without context
 
-:class:`Document` instances do not have collection methods and will raise a
-:py:exc:`AttributeError`::
+:class:`~humbledb.document.Document` instances do not have collection methods
+and will raise a :py:exc:`AttributeError`::
 
    >>> doc.insert
    Traceback (most recent call last):
@@ -169,8 +169,9 @@ Working with Documents
 
 Document subclasses provide a clean attribute oriented interface to your 
 collection's documents, but at their heart, they're just dictionaries. The only
-required attributes on a document are :attr:`~Document.config_database`, and
-:attr:`~Document.config_collection`.
+required attributes on a document are
+:attr:`~humbledb.document.Document.config_database`, and
+:attr:`~humbledb.document.Document.config_collection`.
 
 .. rubric:: Example: Documents are dictionaries
 
@@ -207,12 +208,16 @@ When an mapped attribute is accessed from the class, the short key is returned,
 and when accessed from an instance, that instance's value for that key is
 returned.
 
-If a document doesn't have a value set for a mapped attribute, ``None`` is
+If a document doesn't have a value set for a mapped attribute, ``{}`` is
 returned (rather than raising an :exc:`AttributeError`), so you can easily
-check whether an attribute exists.
+check whether an attribute exists. This also allows you to create embedded
+documents whose keys are not mapped.
 
 When a document is inserted, its ``_id`` attribute is set to the created
 :class:`~bson.objectid.ObjectId`, if it wasn't already set.
+
+.. versionchanged:: 3.0
+   Unset attributes on a Document return ``{}`` rather than ``None``
 
 .. rubric:: Example: Attribute mapping
 
@@ -229,23 +234,36 @@ When a document is inserted, its ``_id`` attribute is set to the created
        # Private names are ignored
        _my_str = 'private'
 
+       # Non string values are ignored
+       an_int = 1
+
    doc = MyDoc()
 
-   # Unset attributes return None
+   # Unset attributes return {}, which evaluates to False
    if not doc.my_attribute:
       # Attribute assignment works like normal
       doc.my_attribute = 'Hello'
+      # Attribute deletion works like normal too
+      del doc.my_attribute
+
+   # You can explicitly check if you expect to assign values which also 
+   # evaluate to False
+   if doc.my_attribute == {}:
+      doc.my_attribute = 'Hello World'
 
    # Class attributes return the key
    MyDoc.my_attribute # 'my_key'
 
    # Instance attributes return the value
-   doc.my_attribute # 'Hello'
+   doc.my_attribute # 'Hello World'
 
    # Private names aren't mapped
    doc._my_str # 'private'
 
-   doc._id # None
+   # Neither are non-string values
+   doc.an_int # 1
+
+   doc._id # {}
 
    if not doc._id:
       with Mongo:
@@ -253,14 +271,16 @@ When a document is inserted, its ``_id`` attribute is set to the created
 
    doc._id # ObjectId(...)
 
+
 Introspecting Documents
 -----------------------
 
 Sometimes it's useful to be able to introspect a document schema to find out
 what attributes or keys are mapped. To do this, HumbleDB provides two methods,
-:meth:`Document.mapped_keys` and :meth:`Document.mapped_attributes`. These
-methods will return all the mapped dictionary keys and document attributes,
-respectively, excluding the ``_id`` key/attribute.
+:meth:`~humbledb.document.Document.mapped_keys` and
+:meth:`~humbledb.document.Document.mapped_attributes`. These methods will
+return all the mapped dictionary keys and document attributes, respectively,
+excluding the ``_id`` key/attribute.
 
 .. rubric:: Example: Introspecting documents
 
@@ -278,6 +298,7 @@ respectively, excluding the ``_id`` key/attribute.
 
    # Mapping an arbitrary dict, while restricting keys
    some_dict = {'spam': 'ham', 'k': True, 'o': "Hello"}
+
    # Create an empty doc
    doc = MyDoc()
 
@@ -286,6 +307,7 @@ respectively, excluding the ``_id`` key/attribute.
        if key in some_dict:
            doc[key] = some_dict[key]
 
+.. _embedding-documents:
 
 Embedding Documents
 ===================
@@ -313,6 +335,9 @@ available as the attribute `key`.
        config_database = 'humble'
        config_collection = 'embed'
 
+       # Any mapped attribute can be used as an embedded document
+       my_attribute = 'my_attr'
+
        # This maps embedded_doc to embed_key
        embedded_doc = Embed('embed_key')
 
@@ -329,10 +354,15 @@ available as the attribute `key`.
    # Empty or missing embedded documents are returned as an empty dictionary
    empty_doc.embedded_doc # {}
 
-   # Missing attributes are returned as None
-   empty_doc.embedded_doc.my_attribute # None
+   # Missing attributes are returned as {} so you can have unmapped subdocs
+   empty_doc.embedded_doc.my_attribute # {}
 
    doc = Example()
+
+   # You can use attributes as unmapped embedded documents
+   doc.my_attribute['embedded_key'] = 'Hello'
+   doc.my_attribute # {'embedded_key': 'Hello'}
+   doc # {'my_attr': {'embedded_key': 'Hello'}}
 
    # Attribute assignment works like normal
    if not doc.embedded_doc:
@@ -389,15 +419,17 @@ TODO
 All the standard pymongo find/update/remove, etc., are mapped onto Document
 subclasses.
 
+.. _specifying-indexes:
+
 Specifying Indexes
 ==================
 
-Indexes are specified using the :attr:`Document.config_indexes` attribute.
-This attribute should be a list of attribute names to index. These names will
-be automatically mapped to their key names when the index call is made.  More
-complicated indexes with different sort ordering, uniqueness, or sparseness
-currently can't be created with HumbleDB's ``config_indexes``. This will change
-soon.
+Indexes are specified using the
+:attr:`~humbledb.document.Document.config_indexes` attribute.  This attribute
+should be a list of attribute names to index. These names will be automatically
+mapped to their key names when the index call is made.  More complicated
+indexes with different sort ordering, uniqueness, or sparseness currently can't
+be created with HumbleDB's ``config_indexes``. This will change soon.
 
 HumbleDB uses an :meth:`~pymongo.collection.Collection.ensure_index` call with
 a TTL of 24 hours, and ``background=True``. This will be called before any
@@ -426,9 +458,10 @@ a TTL of 24 hours, and ``background=True``. This will be called before any
 Configuring Connections
 =======================
 
-The :class:`Mongo` class provides a default connection for you, but what do you
-do if you need to connect to a different host, port, or a replica set? You 
-can subclass Mongo to change your settings to whatever you need. 
+The :class:`~humbledb.mongo.Mongo` class provides a default connection for you,
+but what do you do if you need to connect to a different host, port, or a
+replica set? You can subclass Mongo to change your settings to whatever you
+need. 
 
 Mongo subclasses are used as context managers, just like Mongo. Different
 Mongo subclasses can be nested within one another, should your code require it,
@@ -454,8 +487,8 @@ either :func:`Pyconfig.set` (i.e. ``pyconfig.set('humbledb.connection_pool',
 * **humbledb.connection_pool** (``int``, default: ``10``) - Size of the
   connection pool to use.
 * **humbledb.allow_explicit_request** (``bool``, default: ``False``) - Whether
-  or not :meth:`Mongo.start` can be used to define a request, without using
-  Mongo as a context manager.
+  or not :meth:`~humbledb.mongo.Mongo.start` can be used to define a request,
+  without using Mongo as a context manager.
 * **humbledb.auto_start_request** (``bool``, default: ``True``) - Whether to
   use ``auto_start_request`` with the :class:`~pymongo.connection.Connection`
   instance.

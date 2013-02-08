@@ -1,3 +1,4 @@
+# flake8: noqa
 """
 LICENSE
 =======
@@ -17,17 +18,12 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-__version__ = '2.3.1'
+__version__ = '3.0.0-dev'
 
 
-from . import (
-        mongo,
-        report,
-        )
-from .mongo import (
-        Document,
-        Embed,
-        Index,
-        Mongo,
-        )
+from .index import Index
+from .mongo import Mongo
+from .document import Document, Embed
+# This needs to be imported last or it causes with circular imports
+from . import report
 

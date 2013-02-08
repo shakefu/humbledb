@@ -1,18 +1,16 @@
 import mock
 import pytool
-import pymongo
 import pyconfig
 
-from .util import *
-from humbledb import Mongo, Document, Embed, Index
+import humbledb
+from ..util import *
+from humbledb import Mongo, Document, Embed
 
 
 def teardown():
     DBTest.connection.drop_database(database_name())
 
 
-# These names have to start with an underscore so nose ignores them, otherwise
-# it raises an error when trying to run the tests
 class DocTest(Document):
     config_database = database_name()
     config_collection = 'test'
@@ -29,10 +27,6 @@ class EmbedTestDoc(Document):
 
     embed.embed = Embed('e')
     embed.embed.attr = 'a'
-
-
-def test_new():
-    assert_equal(DBTest, DBTest())
 
 
 def test_delete():
@@ -82,6 +76,7 @@ def test_ignore_method():
     class Test(Document):
         config_database = database_name()
         config_collection = 'test'
+
         def test(self):
             pass
 
@@ -96,47 +91,11 @@ def test_unmapped_fields():
     eq_(n._asdict()['foo'], 'bar')
 
 
-@raises(TypeError)
-def test_missing_config_host():
-    class Test(Mongo):
-        config_port = 27017
-
-
-@raises(TypeError)
-def test_missing_config_port():
-    class Test(Mongo):
-        config_host = 'localhost'
-
-
-def test_reload():
-    with mock.patch.object(DBTest, '_new_connection') as _new_conn:
-        pyconfig.reload()
-        _new_conn.assert_called_once()
-
-    # Have to reload again to get real connection instance back
-    pyconfig.reload()
-
-
-@raises(RuntimeError)
-def test_nested_conn():
-    with DBTest:
-        with DBTest:
-            pass
-
-
-def test_harmless_end():
-    # This shouldn't raise any errors
-    DBTest.end()
-    DBTest.start()
-    DBTest.end()
-    DBTest.end()
-
-
 def test_instance_dictproxy_attr():
     _doc = DocTest()
     _doc.user_name = 'value'
     eq_(_doc.user_name, 'value')
-    eq_(DocTest().user_name, None)
+    eq_(DocTest().user_name, {})
 
 
 def test_ensure_indexes_called():
@@ -198,12 +157,13 @@ def test_wrap_methods():
             _wrap.assert_called_once()
 
 
-def test_wrap_method_has_as_class():
+def test_wrap_method_behaves_itself():
     with DBTest:
         with mock.patch.object(DocTest, 'collection') as coll:
             coll.find.__name__ = 'find'
+            coll.find.return_value = mock.Mock(spec=humbledb.cursor.Cursor)
             DocTest.find()
-            coll.find.assert_called_with(as_class=DocTest)
+            coll.find.assert_called_with()
 
 
 def test_update_passthrough():
@@ -221,37 +181,9 @@ def test_asdict():
     eq_(DocTest({'u': 'test_name'})._asdict(), {'user_name': 'test_name'})
 
 
-def test_replica():
-    try:
-        with mock.patch('pymongo.ReplicaSetConnection') as replica:
-            class Replica(Mongo):
-                config_host = 'localhost'
-                config_port = 27017
-                config_replica = 'test'
-
-            with Replica:
-                pass
-
-            replica.assert_called_once()
-    except AttributeError, exc:
-        if pymongo.version < '2.1':
-            ok_('ReplicaSetConnection' in exc.message)
-        else:
-            raise
-
-
-def test_reconnect():
-    with mock.patch.object(DBTest, '_new_connection') as _new_conn:
-        DBTest.reconnect()
-        _new_conn.assert_called_once()
-
-    # Have to reconnect again to get real connection instance back
-    DBTest.reconnect()
-
-
-
 def test_nonstring():
     _instance = object()
+
     class _TestNonString(Document):
         config_database = database_name()
         config_collection = 'test'
@@ -272,7 +204,7 @@ def test_nonstring():
     eq_(_TestNonString().bar, True)
     eq_(_TestNonString().cls, object)
     eq_(_TestNonString().instance, _instance)
-    eq_(_TestNonString().ok, None)
+    eq_(_TestNonString().ok, {})
 
 
 def test_property_attribute():
@@ -607,47 +539,6 @@ def test_find_and_modify_returns_same_class():
     eq_(type(doc), DocTest)
 
 
-def test_mapped_keys():
-    class TestMapped(Document):
-        key1 = '1'
-        key2 = '2'
-        key3 = '3'
-
-    eq_(sorted(TestMapped.mapped_keys()), ['1', '2', '3'])
-
-
-def test_mapped_attributes():
-    class TestMapped(Document):
-        key1 = '1'
-        key2 = '2'
-        key3 = '3'
-
-    eq_(sorted(TestMapped.mapped_attributes()), ['key1', 'key2', 'key3'])
-
-
-def test_embed_mapped_keys():
-    class TestMapped(Document):
-        key1 = '1'
-        key2 = '2'
-        key3 = '3'
-
-        embed = Embed('e')
-
-    eq_(sorted(TestMapped.mapped_keys()), ['1', '2', '3', 'e'])
-
-
-def test_embed_mapped_attributes():
-    class TestMapped(Document):
-        key1 = '1'
-        key2 = '2'
-        key3 = '3'
-
-        embed = Embed('e')
-
-    eq_(sorted(TestMapped.mapped_attributes()),
-            ['embed', 'key1', 'key2', 'key3'])
-
-
 def test_find_and_modify_doesnt_error_when_none():
     with DBTest:
         doc = DocTest.find_and_modify({DocTest._id: 'doesnt_exist'},
@@ -656,106 +547,48 @@ def test_find_and_modify_doesnt_error_when_none():
     eq_(doc, None)
 
 
-def test_index_basic():
-    class Test(Document):
-        config_database = database_name()
-        config_collection = 'test'
-        config_indexes = [Index('user_name')]
+def test_list_subdocuments_should_be_regular_dicts():
+    class ListTest(DocTest):
+        vals = 'v'
+    # Create a new instance
+    l = ListTest()
+    vals = [{'a': {'test': True}, 'b': 2}]
+    # Insert the instance
+    with Mongo:
+        l_id = ListTest.insert(l)
+        # Set the list
+        ListTest.update({ListTest._id: l_id}, {'$set': {ListTest.vals: vals}})
+        # Re-retrieve the instance to allow pymongo to coerce types
+        l = list(ListTest.find({ListTest._id: l_id}))[0]
+        l2 = ListTest.find_one({ListTest._id: l_id})
+    # Check the type
+    ok_(not isinstance(l.vals[0], Document), l.vals[0])
+    ok_(not isinstance(l2.vals[0], Document), l2.vals[0])
 
-        user_name = 'u'
+
+def test_unpatching_document_update_works_nicely():
+    with DBTest:
+        original_update = DocTest.update
+        with mock.patch.object(DocTest, 'update') as update:
+            update.return_value = 'updated'
+            value = DocTest.update({DocTest._id: 1}, {'$set': {DocTest.user_name:
+                'hello'}})
+            eq_(value, 'updated')
+        eq_(DocTest.update, original_update)
+
+
+def test_unmapped_subdocument_saves_and_retrieves_ok():
+    class Test(DocTest):
+        val = 'v'
+
+    t = Test()
+    eq_(t.val, {})
+    t.val['hello'] = 'world'
 
     with DBTest:
-        with mock.patch.object(Test, 'collection') as coll:
-            coll.find_one.__name__ = 'find_one'
-            Test._ensured = None
-            Test.find_one()
-            coll.ensure_index.assert_called_with(
-                    [(Test.user_name, pymongo.ASCENDING)],
-                    background=True,
-                    cache_for=60*60*24)
+        t_id = Test.insert(t)
+        t = Test.find_one({Test._id: t_id})
 
+    eq_(t.val, {'hello': 'world'})
 
-def test_index_basic_sparse():
-    class Test(Document):
-        config_database = database_name()
-        config_collection = 'test'
-        config_indexes = [Index('user_name', sparse=True)]
-
-        user_name = 'u'
-
-    with DBTest:
-        with mock.patch.object(Test, 'collection') as coll:
-            coll.find_one.__name__ = 'find_one'
-            Test._ensured = None
-            Test.find_one()
-            coll.ensure_index.assert_called_with(
-                    [(Test.user_name, pymongo.ASCENDING)],
-                    background=True,
-                    cache_for=60*60*24,
-                    sparse=True)
-
-
-def test_index_basic_directional():
-    class Test(Document):
-        config_database = database_name()
-        config_collection = 'test'
-        config_indexes = [Index(('user_name', pymongo.DESCENDING))]
-
-        user_name = 'u'
-
-    with DBTest:
-        with mock.patch.object(Test, 'collection') as coll:
-            coll.find_one.__name__ = 'find_one'
-            Test._ensured = None
-            Test.find_one()
-            coll.ensure_index.assert_called_with(
-                    [(Test.user_name, pymongo.DESCENDING)],
-                    background=True,
-                    cache_for=60*60*24)
-
-
-def test_index_override_defaults():
-    class Test(Document):
-        config_database = database_name()
-        config_collection = 'test'
-        config_indexes = [Index('user_name', background=False, cache_for=60)]
-
-        user_name = 'u'
-
-    with DBTest:
-        with mock.patch.object(Test, 'collection') as coll:
-            coll.find_one.__name__ = 'find_one'
-            Test._ensured = None
-            Test.find_one()
-            coll.ensure_index.assert_called_with(
-                    [(Test.user_name, pymongo.ASCENDING)],
-                    background=False,
-                    cache_for=60)
-
-
-def test_resolve_dotted_index():
-    class TestResolveIndex(DocTest):
-        meta = Embed('m')
-        meta.tag = 't'
-
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta'), 'm')
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.tag'), 'm.t')
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.foo'), 'meta.foo')
-
-
-def test_resolve_deep_dotted_index():
-    class TestResolveIndex(DocTest):
-        meta = Embed('m')
-        meta.deep = Embed('d')
-        meta.deep.deeper = Embed('d')
-        meta.deep.deeper.deeper_still = Embed('d')
-        meta.deep.deeper.deeper_still.tag = 't'
-
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.deep'), 'm.d')
-    eq_(Index('')._resolve_index(TestResolveIndex, 'meta.deep.deeper'),
-            'm.d.d')
-    eq_(Index('')._resolve_index(TestResolveIndex,
-        'meta.deep.deeper.deeper_still'), 'm.d.d.d')
-    eq_(Index('')._resolve_index(TestResolveIndex,
-        'meta.deep.deeper.deeper_still.tag'), 'm.d.d.d.t')
 

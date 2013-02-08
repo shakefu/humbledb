@@ -4,7 +4,7 @@ Preaggregated reporting
 """
 import pytool
 
-from humbledb.mongo import Document, Embed, Index
+from humbledb import Document, Embed, Index
 
 
 class ReportBase(Document):

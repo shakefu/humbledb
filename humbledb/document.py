@@ -266,7 +266,10 @@ class DocumentMeta(type):
 
 
 class Document(dict):
-    """ This class represents a Mongo document. """
+    """ This is the base class for a HumbleDB document. It should not be used
+        directly, but rather configured via subclassing.
+
+    """
     __metaclass__ = DocumentMeta
 
     collection = None

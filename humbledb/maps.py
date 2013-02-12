@@ -164,7 +164,7 @@ class ListMap(ListProxy):
         self._name_map = name_map
         super(ListMap, self).__init__(value)
 
-    def item(self):
+    def new(self):
         """ Create a new embedded document in this list. """
         # We start with a new, empty dictionary
         value = {}

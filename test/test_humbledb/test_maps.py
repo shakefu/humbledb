@@ -181,7 +181,7 @@ def test_embedded_list_creation_with_attributes():
 
     doc = Test()
     doc.vals = []
-    val = doc.vals.item()
+    val = doc.vals.new()
     val.one = 1
     val.two = 2
     eq_(doc._asdict(), {'vals': [{'one': 1, 'two': 2}]})
@@ -198,10 +198,10 @@ def test_embedded_list_with_crazy_complex_heirarchy():
     doc = Test()
     doc.l1 = []
     doc.s1 = 1
-    item = doc.l1.item()
+    item = doc.l1.new()
     item.l2 = []
     item.s2 = 2
-    item2 = item.l2.item()
+    item2 = item.l2.new()
     item2.s3 = 3
 
     eq_(doc, {'s1': 1, 'l1':[{'s2': 2, 'l2': [{'s3': 3}]}]})
@@ -222,7 +222,7 @@ def test_embedded_list_iteration():
     doc = Test()
     doc.vals = []
     for i in xrange(5):
-        item = doc.vals.item()
+        item = doc.vals.new()
         item.i = i
 
     for item in doc.vals:
@@ -240,7 +240,7 @@ def test_modified_items_save_ok():
     doc = Test()
     doc.vals = []
     for i in xrange(5):
-        item = doc.vals.item()
+        item = doc.vals.new()
         item.i = i
 
     with DBTest:

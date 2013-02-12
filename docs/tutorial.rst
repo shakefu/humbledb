@@ -679,7 +679,9 @@ called before any :meth:`~pymongo.collection.Collection.find`,
 :meth:`~pymongo.collection.Collection.find_and_modify` operation.
 
 .. versionadded:: 2.2
-   :class:`~humbledb.index.Index` class for complex indices.
+   :class:`~humbledb.index.Index` class for index creation customization.
+.. versionadded:: 3.0
+   Support for compound indexes.
 
 .. rubric:: Example: Indexes on a BlogPost class
 
@@ -689,8 +691,17 @@ called before any :meth:`~pymongo.collection.Collection.find`,
    class BlogPost(Document):
       config_database = 'humble'
       config_collection = 'posts'
-      config_indexes = ['author', 'timestamp', Index('tags', sparse=True),
-            Index([('slug', humbledb.DESC)], unique=True)]
+      config_indexes = [
+              # Basic indexes
+              'author',
+              'timestamp',
+              # Indexes with additional creation arguments
+              Index('tags', sparse=True),
+              # Directional indexes with additional creation arguments
+              Index([('slug', humbledb.DESC)], unique=True),
+              # Compound indexes
+              Index([('author', humbledb.ASC), ('timestamp', humbledb.DESC)]),
+         ]
 
       timestamp = 'ts'
       author = 'a'

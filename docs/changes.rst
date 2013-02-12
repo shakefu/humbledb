@@ -16,6 +16,7 @@ This section contains all the changes that I can remember, by version.
 - Change return value of unset attributes from ``None`` to ``{}``.
 - Add aliases :attr:`humbledb.DESC` and :attr:`humbledb.ASC` for
   :attr:`pymongo.DESCENDING` and :attr:`pymongo.ASCENDING` respectively.
+- Add embedded document list attribute mapping.
 - Lots of test coverage.
 
 2.3.1

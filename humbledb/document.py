@@ -9,7 +9,7 @@ import pyconfig
 from humbledb.index import Index
 from humbledb.mongo import Mongo
 from humbledb.cursor import Cursor
-from humbledb.maps import DictMap, NameMap
+from humbledb.maps import DictMap, NameMap, ListMap
 
 
 class Embed(unicode):
@@ -326,16 +326,37 @@ class Document(dict):
         reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
 
         def mapper(doc, submap):
+            """ Maps `doc` keys with the given `submap` substitution map. """
             copy = {}
             for key, value in doc.items():
-                if isinstance(value, dict) and key in submap:
-                    copy[submap[key]] = mapper(value, submap[key])
-                elif key in submap:
-                    copy[submap[key]] = value
+                if key in submap:
+                    mapped = submap[key]
+                    if isinstance(value, dict):
+                        # Recursively map items in a dictionary
+                        copy[mapped] = mapper(value, mapped)
+                    elif isinstance(value, list):
+                        # Map items iteratively in a list
+                        copy[mapped] = map_list(value, mapped)
+                    else:
+                        # Just map regular items
+                        copy[mapped] = value
                 else:
                     copy[key] = value
 
             return copy
+
+        def map_list(values, submap):
+            """ Maps `values` against `submap`. """
+            values = values[:]
+            for i in xrange(len(values)):
+                value = values[i]
+                if isinstance(value, dict):
+                    # Recursively map items in a dictionary
+                    values[i] = mapper(value, submap)
+                elif isinstance(value, list):
+                    values[i] = map_list(value)
+
+            return values
 
         return mapper(self, reverse_name_map)
 
@@ -352,6 +373,8 @@ class Document(dict):
                 # If it's a dict, we need to keep mapping subkeys
                 if isinstance(value, dict):
                     value = DictMap(value, name_map, self, name_map)
+                elif isinstance(value, list):
+                    value = ListMap(value, name_map, self, name_map)
                 return value
             elif isinstance(name_map, NameMap):
                 # Return an empty dict map to allow sub-key assignment

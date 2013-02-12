@@ -1,4 +1,5 @@
 from ..util import *
+from humbledb.maps import ListMap
 from humbledb import Document, Embed
 
 
@@ -10,6 +11,17 @@ class MapTest(Document):
     em = Embed('e')
     em.val = 'v'
     val = 'v'
+
+
+class DocTest(Document):
+    config_database = database_name()
+    config_collection = 'doc_test'
+
+
+class ListTest(DocTest):
+    vals = Embed('l')
+    vals.one = 'o'
+    vals.two = 't'
 
 
 def test_mapped_keys():
@@ -131,3 +143,92 @@ def test_deleting_the_last_key_removes_an_embedded_doc():
     eq_(t, {'v': {'a': 1}})
     del t.val['a']
     eq_(t, {})
+
+
+def test_lists_are_mapped():
+    doc = ListTest()
+    doc.vals = ['hello', 'world']
+    with DBTest:
+        ListTest.insert(doc)
+        doc = ListTest.find_one()
+    is_instance_(doc.vals, ListMap)
+
+
+def test_embedded_list_as_json_replaces_embedded_doc_field_names():
+    doc = ListTest()
+    doc.vals = [{'o': 'hello'}, 'world']
+    eq_(doc._asdict(), {'vals': [{'one': 'hello'}, 'world']})
+
+
+def test_embedded_list_as_json_recursively_sets_field_names():
+    class Test(DocTest):
+        vals = Embed('l')
+        vals.one = 'o'
+        vals.sub = Embed('s')
+        vals.sub.two = 't'
+
+    doc = Test()
+    doc.vals = [{'s': [{'t': 'hello'}], 'o': 1}, {'o': 1}]
+    eq_(doc._asdict(), {'vals': [{'sub': [{'two': 'hello'}], 'one': 1},
+        {'one': 1}]})
+
+
+def test_embedded_list_creation_with_attributes():
+    class Test(DocTest):
+        vals = Embed('l')
+        vals.one = 'o'
+        vals.two = 't'
+
+    doc = Test()
+    doc.vals = []
+    val = doc.vals.item()
+    val.one = 1
+    val.two = 2
+    eq_(doc._asdict(), {'vals': [{'one': 1, 'two': 2}]})
+
+
+def test_embedded_list_with_crazy_complex_heirarchy():
+    class Test(DocTest):
+        s1 = 's1'
+        l1 = Embed('l1')
+        l1.s2 = 's2'
+        l1.l2 = Embed('l2')
+        l1.l2.s3 = 's3'
+
+    doc = Test()
+    doc.l1 = []
+    doc.s1 = 1
+    item = doc.l1.item()
+    item.l2 = []
+    item.s2 = 2
+    item2 = item.l2.item()
+    item2.s3 = 3
+
+    eq_(doc, {'s1': 1, 'l1':[{'s2': 2, 'l2': [{'s3': 3}]}]})
+
+    with DBTest:
+        doc_id = Test.insert(doc)
+        doc = Test.find_one({Test._id: doc_id})
+
+    doc.pop('_id')
+    eq_(doc, {'s1': 1, 'l1':[{'s2': 2, 'l2': [{'s3': 3}]}]})
+
+
+def test_embedded_list_iteration():
+    class Test(DocTest):
+        vals = Embed('v')
+        vals.i = 'i'
+
+    doc = Test()
+    doc.vals = []
+    for i in xrange(5):
+        item = doc.vals.item()
+        item.i = i
+
+    for item in doc.vals:
+        is_instance_(item.i, int)
+
+    for i in xrange(len(doc.vals)):
+        is_instance_(item.i, int)
+
+

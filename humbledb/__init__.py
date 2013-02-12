@@ -31,14 +31,14 @@ __all__ = [
         'DESC',
         ]
 
+# Shortcuts to pymongo index directions
+import pymongo
+DESC = pymongo.DESCENDING
+ASC = pymongo.ASCENDING
+
 from .index import Index
 from .mongo import Mongo
 from .document import Document, Embed
 # This needs to be imported last or it causes with circular imports
 from . import report
-
-# Shortcuts to pymongo index directions
-import pymongo
-DESC = pymongo.DESCENDING
-ASC = pymongo.ASCENDING
 

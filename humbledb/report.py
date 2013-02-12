@@ -4,6 +4,7 @@ Preaggregated reporting
 """
 import pytool
 
+import humbledb
 from humbledb import Document, Embed, Index
 
 
@@ -16,26 +17,58 @@ MINUTE = 1
 
 
 class ReportBase(Document):
-    """ Superclass for common report methods and fields. """
+    """ Document superclass for common report methods and fields. Use this to
+        create completely custom pre-aggregate reporting classes.
+
+        **_id**
+            Document identifier.
+
+        **meta.date** *= 'u.d'*
+            Date of the document.
+
+        **meta.event** *= 'u.e'*
+            String identifier for the event.
+
+    """
     # These are just default indexes, but they can be overridden
-    config_indexes = [Index('meta.date'), Index('meta.event')]
+    config_indexes = [Index([('meta.event', humbledb.ASC), ('meta.date', humbledb.DESC)])]
+    """ These are the default indexes. There is a compound index on
+    ``meta.event`` and ``meta.date``. """
 
     meta = Embed('u')
     meta.date = 'd'
     meta.event = 'e'
 
     def get_id(self, event):
-        """ Return an _id value for `event`. """
+        """ Return an _id value for `event`.
+
+            :note: This must be implemented by a subclass
+
+            :param str event: Event identifier
+
+        """
         raise NotImplementedError("'get_id' must be implemented by a "
                 "subclass.")
 
     def floor_date(self, date):
-        """ Return `date` floored to the correct timeframe. """
+        """ Return `date` floored to the correct timeframe.
+
+            :note: This must be implemented by a subclass
+
+            :param datetime date: The datetime corresponding to the event
+
+        """
         raise NotImplementedError("'floor_date' must be implemented by a "
                 "subclass.")
 
     def get_update(self, now):
-        """ Return an update dictionary for datetime `now`. """
+        """ Return an update dictionary for datetime `now`.
+
+            :note: This must be implemented by a subclass
+
+            :param datetime now: The current datetime
+
+        """
         raise NotImplementedError("'get_update' must be implmented by a "
                 "subclass.")
 
@@ -64,7 +97,44 @@ class ReportBase(Document):
 
 
 class DailyReport(ReportBase):
-    """ Reports which are aggregated on a daily basis. """
+    """ Reports which are aggregated on a daily basis.
+
+        Subclass this Document to create your own report documents which record
+        a day's worth of data per document.
+
+        Example::
+
+            class DailyPageHits(DailyReport):
+                config_database = 'reports'
+                config_collection = 'page_hits'
+                config_resolution = MINUTE
+
+
+            url_path = '/about'
+            DailyPageHits().record(url_path)
+
+
+        **_id**
+            Document identifier like ``'event/20130212'``.
+
+        **meta.date** *= 'u.d'*
+            Date of the document.
+
+        **meta.event** *= 'u.e'*
+            String identifier for the event.
+
+        **daily** *= 'd'*
+            Count of events for this day.
+
+        **hour** `[0..23]` *= 'h'*
+            Count per hour. Only used if :attr:`config_resolution` is
+            :data:`HOUR` or less.
+
+        **minute** `[0..23][0..59]` *= 'm'*
+            Count per minute. Only used :attr:`config_resolution` is
+            :data:`MINUTE`.
+
+    """
     config_resolution = MINUTE
     """ When subclassed, the `config_resolution` may be set to one of
         :attr:`DAILY`, :attr:`HOUR`, :attr:`MINUTE`, to indicate how precise
@@ -116,7 +186,44 @@ class DailyReport(ReportBase):
 
 
 class WeeklyReport(ReportBase):
-    """ Reports which are aggregated on a weekly basis. """
+    """ Reports which are aggregated on a weekly basis.
+
+        Subclass this Document to create your own report documents which record
+        a week's worth of data per document.
+
+        Example::
+
+            class WeeklyPageHits(WeeklyReport):
+                config_database = 'reports'
+                config_collection = 'page_hits'
+                config_resolution = HOUR
+
+
+            url_path = '/about'
+            WeeklyPageHits().record(url_path)
+
+
+        **_id**
+            Document identifier like ``'event/20130212'``.
+
+        **meta.date** *= 'u.d'*
+            Date of the start of the week of the document.
+
+        **meta.event** *= 'u.e'*
+            String identifier for the event.
+
+        **weekly** *= 'w'*
+            Count of events for this week.
+
+        **day** `[0..7]` *= 'd'*
+            Count per day. Only used if :attr:`config_resolution` is
+            :data:`DAY` or less.
+
+        **hour** `[0..23]` *= 'h'*
+            Count per hour. Only used :attr:`config_resolution` is
+            :data:`HOUR`.
+
+    """
     config_resolution = HOUR
     """ When subclassed, the `config_resolution` may be set to one of
         :attr:`WEEKLY`, :attr:`DAILY`, or :attr:`HOUR` to indicate how precise
@@ -144,7 +251,7 @@ class WeeklyReport(ReportBase):
         # Create our $inc dict
         update = {}
 
-        if self.config_resolution > WEEKLY:
+        if self.config_resolution > WEEKLY or self.config_resolution < HOUR:
             raise ValueError("'config_resolution' is not set to a valid "
                     "value.")
 
@@ -168,7 +275,43 @@ class WeeklyReport(ReportBase):
 
 
 class MonthlyReport(ReportBase):
-    """ Reports which are aggregated on a monthly basis. """
+    """ Reports which are aggregated on a monthly basis.
+
+        Subclass this Document to create your own report documents which record
+        a week's worth of data per document.
+
+        Example::
+
+            class MonthlyPageHits(MonthlyReport):
+                config_database = 'reports'
+                config_collection = 'page_hits'
+                config_resolution = DAY
+
+
+            url_path = '/about'
+            MonthlyPageHits().record(url_path)
+
+        **_id**
+            Document identifier like ``'event/201302'``.
+
+        **meta.date** *= 'u.d'*
+            Date of the start of the week of the document.
+
+        **meta.event** *= 'u.e'*
+            String identifier for the event.
+
+        **monthly** *= 'm'*
+            Count of events for this month.
+
+        **day** `[1..31]` *= 'd'*
+            Count per day. Only used if :attr:`config_resolution` is
+            :data:`DAY` or less.
+
+        **hour** `[1..31][0..23]` *= 'h'*
+            Count per hour. Only used :attr:`config_resolution` is
+            :data:`HOUR`.
+
+    """
     config_resolution = HOUR
     """ When subclassed, the `config_resolution` may be set to one of
         :attr:`MONTHLY`, :attr:`DAILY`, or :attr:`HOUR` to indicate how
@@ -196,7 +339,7 @@ class MonthlyReport(ReportBase):
         # Create our $inc dict
         update = {}
 
-        if self.config_resolution > MONTHLY:
+        if self.config_resolution < HOUR:
             raise ValueError("'config_resolution' is not set to a valid "
                     "value.")
 

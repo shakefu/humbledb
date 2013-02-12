@@ -48,23 +48,33 @@ Reports
 
 The report module contains the HumbleDB reporting framework.
 
+ReportBase
+----------
+
+.. autoclass:: humbledb.report.ReportBase
+   :members:
+
+
 DailyReport
 -----------
 
 .. autoclass:: humbledb.report.DailyReport
-   :members:
+
+   .. automethod:: humbledb.report.DailyReport.record
 
 WeeklyReport
 ------------
 
 .. autoclass:: humbledb.report.WeeklyReport
-   :members:
+
+   .. automethod:: humbledb.report.DailyReport.record
 
 MonthlyReport
 -------------
 
 .. autoclass:: humbledb.report.MonthlyReport
-   :members:
+
+   .. automethod:: humbledb.report.DailyReport.record
 
 Resolutions
 -----------

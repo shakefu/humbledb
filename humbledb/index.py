@@ -54,9 +54,11 @@ class Index(object):
 
         # Otherwise it must be an iterable
         for i in xrange(len(self.index)):
+            # Of 2-tuples
             pair = self.index[i]
             if len(pair) != 2:
                 raise TypeError("Invalid index: {!r}".format(self.index))
+            # Where the first is the key, and the second the direction
             self.index[i] = (self._resolve_name(cls, pair[0]), pair[1])
 
         return self.index
@@ -73,4 +75,8 @@ class Index(object):
         if not isinstance(part, basestring):
             raise TypeError("Invalid key: {!r}".format(part))
         return part
+
+    def __repr__(self):
+        return "{}({!r}, **{!r})".format(type(self).__name__, self.index,
+                self.kwargs)
 

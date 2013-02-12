@@ -192,6 +192,10 @@ required attributes on a document are
    doc = Basic({'key': 'value'})
    doc['key'] == 'value'
 
+   # You also can query using arbitrary keys
+   with Mongo:
+      docs = Basic.find({'my-key': {'$exists': True}})
+
 .. _attribute-mapping:
 
 Attribute Mapping
@@ -687,6 +691,23 @@ your needs.
                {'$push': {MyGroup.related: MyDoc._id},
                multi=True)
 
+.. _reports:
 
+Pre-aggregated Reports
+======================
 
+HumbleDB provides a framework for creating pre-aggregated reports based on the
+ideas laid out `here
+<http://docs.mongodb.org/manual/use-cases/pre-aggregated-reports/>`_.
+
+These reports are ideal for gathering metrics on a relatively low number of
+unique events that happen with a regular frequency. For example, hits to a
+certain webpage, or offer signups.
+
+In cases where the event data is sparse, diverse, or has many parameters, other
+aggregation approaches may work better. 
+
+.. rubric:: Example: 
+
+COMING SOON
 

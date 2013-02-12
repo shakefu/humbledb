@@ -232,3 +232,34 @@ def test_embedded_list_iteration():
         is_instance_(item.i, int)
 
 
+def test_modified_items_save_ok():
+    class Test(DocTest):
+        vals = Embed('v')
+        vals.i = 'i'
+
+    doc = Test()
+    doc.vals = []
+    for i in xrange(5):
+        item = doc.vals.item()
+        item.i = i
+
+    with DBTest:
+        doc_id = Test.insert(doc)
+        doc = Test.find_one({Test._id: doc_id})
+
+    for item in doc.vals:
+        item.i = 12
+
+    with DBTest:
+        Test.save(doc)
+        doc = Test.find_one({Test._id: doc_id})
+
+    eq_(len(doc.vals), 5)
+
+    total = 0
+    for item in doc.vals:
+        eq_(item.i, 12)
+        total += item.i
+
+    eq_(total, 60)
+

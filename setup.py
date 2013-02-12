@@ -16,7 +16,7 @@ setup(
         install_requires=[
             'pymongo >= 2.0.1',
             'pyconfig',
-            'pytool >= 2.0.0',
+            'pytool >= 2.2.0',
             ],
         test_suite='nose.collector',
         tests_require=[

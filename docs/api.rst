@@ -59,6 +59,7 @@ WeeklyReport
 
 .. autoclass:: humbledb.report.WeeklyReport
    :members:
+
 MonthlyReport
 -------------
 

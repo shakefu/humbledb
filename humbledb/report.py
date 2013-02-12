@@ -109,7 +109,6 @@ class DailyReport(ReportBase):
                 config_collection = 'page_hits'
                 config_resolution = MINUTE
 
-
             url_path = '/about'
             DailyPageHits().record(url_path)
 
@@ -198,7 +197,6 @@ class WeeklyReport(ReportBase):
                 config_collection = 'page_hits'
                 config_resolution = HOUR
 
-
             url_path = '/about'
             WeeklyPageHits().record(url_path)
 
@@ -286,7 +284,6 @@ class MonthlyReport(ReportBase):
                 config_database = 'reports'
                 config_collection = 'page_hits'
                 config_resolution = DAY
-
 
             url_path = '/about'
             MonthlyPageHits().record(url_path)

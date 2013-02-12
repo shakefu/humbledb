@@ -27,6 +27,19 @@ def test_other_bad_subclass_raises_error():
     BadReport().record('test')
 
 
+@raises(NotImplementedError)
+def test_other_bad_subclass_raises_error():
+    class BadReport(ReportBase):
+        def get_id(self, event):
+            return ''
+
+        def floor_date(self, stamp):
+            import pytool
+            return pytool.time.floor_day()
+
+    BadReport().record('test')
+
+
 class DailyReportTest(DailyReport):
     config_database = database_name()
     config_collection = 'report.day'

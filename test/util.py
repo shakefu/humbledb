@@ -39,6 +39,15 @@ class DBTest(Mongo):
     config_port = pyconfig.setting('humbledb.test.db.port', 27017)
 
 
+# This instantiates the connection and causes nose to crap out if there's no
+# database available, which is what we want
+try:
+    with DBTest:
+        pass
+except:
+    raise RuntimeError("Cannot connect to database.")
+
+
 def assert_is_subclass(obj, cls):
     """ Additional assertion helper. """
     assert issubclass(obj, cls), "{!r} is not a subclass of {!r}".format(obj,

@@ -415,6 +415,100 @@ available as the attribute `key`.
 As you can see using embedded documents here lets you keep your keys short, and
 your code clear and understandable.
 
+Embedded Document Lists
+-----------------------
+
+Sometimes your documents will have list of embedded documents in them, and for
+your convenience, HumbleDB allows you to use attribute mapping on those
+documents as well. Because attribute mapping is not just useful for retrieval,
+but also for creation, HumbleDB provides a special :meth:`new` method for
+creating new embedded documents within lists.
+
+HumbleDB doesn't treat embedded lists specially unless they actually have a
+list value. This is because HumbleDB's philosophy is to not validate data
+types based on their keys, just like MongoDB's.
+
+You can also embed lists within documents within lists, etc., to your heart's
+delight and mapped attributes will work as you would expect.
+
+.. rubric:: Creating embedded documents within a list
+
+The easiest way to create embedded documents within a list is to use the
+:meth:`new` helper. Of course, you can always do it "manually" by building and
+appending dictionaries, but who wants to do that?
+
+.. code-block:: python
+   :emphasize-lines: 6-7,14-15,19
+
+   # An example student roster
+   class Roster(Document):
+       config_database = 'humble'
+       config_collection = 'lists'
+
+       # Embedded lists are declared the same way as embedded documents
+       students = Embed('s')
+       students.name = 'n'
+       students.grade = 'g'
+
+   # Create a new roster instance
+   roster = Roster()
+
+   # You must assign a list to it first
+   roster.students = []
+
+   # You can use the new() convenience method which creates and appends an
+   # empty embedded document to your list
+   student = roster.students.new()
+   student.name = "Lisa Simpson"
+   student.grade = "A"
+
+   # Note: We don't have to add it to our list - it is already appended
+   # roster.students.append(student) # DON'T DO THIS: it will create duplicates
+
+   # Everything else works the same
+   with Mongo:
+      Roster.insert(roster)
+
+.. rubric:: Retrieving embedded list data
+
+Upon retrieval, HumbleDB knows if an :class:`~humbledb.document.Embed`
+attribute has a list assigned to it, and lets you use your mapped attributes
+normally.
+
+.. code-block:: python
+   :emphasize-lines: 6,8,11
+
+   # Contining our example from above
+   with Mongo:
+      roster = Roster.find_one()
+
+   # You can iterate over it like any list
+   for student in roster.students:
+      # You get attributes mapped to your embedded document values
+      print student.name, student.grade
+
+      # You can modify attributes of the embedded list items
+      student.grade = "A" # Everybody gets As!
+
+   # Once modified, you can save your changes
+   with Mongo:
+      Roster.save(roster)
+
+.. rubric:: Querying within lists
+
+Because HumbleDB gives you dot-notation keys for embedded attribute mappings,
+querying for list values is straight-forward.
+
+.. code-block:: python
+
+   # Find a roster containing a given student
+   with Mongo:
+      roster = Roster.find_one({Roster.students.name: "Bart Simpson"})
+      
+   # Find all rosters where at least one student has an F
+   with Mongo:
+      rosters = Roster.find({Roster.students.grade: "F"})
+
 Querying, Updating and Deleting
 ===============================
 

@@ -6,6 +6,18 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+3.0.2
+-----
+
+- Fix bug with DocumentMeta accidentally getting extra ``name`` attribute, 
+  which in turn became available on Document, and would override mapping
+  behavior.
+
+3.0.1
+-----
+
+- Fix bug with checking config_resolution on the MonthlyReport.
+
 3.0.0
 -----
 

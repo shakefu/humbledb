@@ -592,3 +592,11 @@ def test_unmapped_subdocument_saves_and_retrieves_ok():
     eq_(t.val, {'hello': 'world'})
 
 
+@raises(AttributeError)
+def test_name_attribute():
+    class Test(Document):
+        pass
+
+    Test.name
+
+

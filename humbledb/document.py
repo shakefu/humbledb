@@ -11,6 +11,10 @@ from humbledb.mongo import Mongo
 from humbledb.cursor import Cursor
 from humbledb.maps import DictMap, NameMap, ListMap
 
+COLLECTION_METHODS = set([_ for _ in dir(pymongo.collection.Collection) if not
+    _.startswith('_') and callable(getattr(pymongo.collection.Collection, _))])
+del _ # This is necessary since _ lingers in the module namespace otherwise
+
 
 class Embed(unicode):
     """ This class is used to map attribute names on embedded subdocuments.
@@ -98,9 +102,7 @@ class CollectionAttribute(object):
 class DocumentMeta(type):
     """ Metaclass for Documents. """
     _ignore_attributes = set(['__test__'])
-    _collection_methods = set([name for name in
-        dir(pymongo.collection.Collection) if not name.startswith('_') and
-        callable(getattr(pymongo.collection.Collection, name))])
+    _collection_methods = COLLECTION_METHODS
     _wrapped_methods = set(['find', 'find_one', 'find_and_modify'])
     _wrapped_doc_methods = set(['find_one', 'find_and_modify'])
     _update = None

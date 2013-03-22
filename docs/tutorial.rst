@@ -777,7 +777,7 @@ your needs.
 
    # Use your custom subclasses as context managers
    with MyDB:
-       docs = MyDoc.find({MyDoc.value {'$gt': 3}})
+       docs = MyDoc.find({MyDoc.value: {'$gt': 3}})
 
    # You can nest different connections when you need to
    # (But you cannot nest the same connection)

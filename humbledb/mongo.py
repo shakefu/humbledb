@@ -2,17 +2,17 @@
 """
 import logging
 import threading
-import pkg_resources
 
 import pymongo
 import pyconfig
-from pytool.lang import classproperty
+from pytool.lang import classproperty, UNSET
+
+from humbledb import _version
 
 
 __all__ = [
         'Mongo',
         ]
-
 
 class MongoMeta(type):
     """ Metaclass to allow :class:`Mongo` to be used as a context manager
@@ -23,6 +23,26 @@ class MongoMeta(type):
 
     def __new__(mcs, name, bases, cls_dict):
         """ Return the Mongo class. """
+        # Choose the correct connection class
+        if cls_dict.get('config_connection_cls', UNSET) is UNSET:
+            # Are we using a replica?
+            if cls_dict.get('config_replica', UNSET):
+                if _version._lt('2.1'):
+                    raise TypeError("Need pymongo.version >= 2.1 for replica "
+                            "sets.")
+                elif _version._gte('2.4'):
+                    conn = pymongo.MongoReplicaSetClient
+                else:
+                    conn = pymongo.ReplicaSetConnection
+            else:
+                # Get the correct regular connection
+                if _version._gte('2.4'):
+                    conn = pymongo.MongoClient
+                else:
+                    conn = pymongo.Connection
+            # Set our connection type
+            cls_dict['config_connection_cls'] = conn
+
         # Specially handle base class
         if name == 'Mongo' and bases == (object,):
             # Create thread local self
@@ -123,6 +143,19 @@ class Mongo(object):
     """ The port to connect to. """
     config_replica = None
     """ If you're connecting to a replica set, this holds its name. """
+    config_connection_cls = UNSET
+    """ This defines the connection class to use. HumbleDB will try to
+    intelligently choose a class based on your replica settings and PyMongo
+    version. """
+    config_max_pool_size = pyconfig.setting('humbledb.connection_pool', 10)
+    """ This specifies the max_pool_size of the connection. """
+    config_auto_start_request = pyconfig.setting('humbledb.auto_start_request',
+            True)
+    """ This specifies the auto_start_request option to the connection. """
+    config_use_greenlets = pyconfig.setting('humbledb.use_greenlets', False)
+    """ This specifies the use_greenlets option to the connection. """
+    config_tz_aware = pyconfig.setting('humbledb.tz_aware', True)
+    """ This specifies the tz_aware option to the connection. """
 
     def __new__(cls):
         """ This class cannot be instantiated. """
@@ -135,40 +168,37 @@ class Mongo(object):
                 "'{}:{}' replica: {}".format(cls.config_host, cls.config_port,
                     cls.config_replica))
 
-        if (pkg_resources.parse_version(pymongo.version)
-                < pkg_resources.parse_version('2.1')):
-            raise RuntimeError("Need pymongo.version >= 2.1 for "
-                    "ReplicaSetConnection.")
-
         return pymongo.ReplicaSetConnection(
                 host=cls.config_host,
                 port=cls.config_port,
-                max_pool_size=pyconfig.get('humbledb.connection_pool', 10),
-                auto_start_request=pyconfig.get('humbledb.auto_start_request',
-                    True),
-                use_greenlets=pyconfig.get('humbledb.use_greenlets', False),
-                tz_aware=True,
+                max_pool_size=cls.config_max_pool_size,
+                auto_start_request=cls.config_auto_start_request,
+                use_greenlets=cls.config_use_greenlets,
+                tz_aware=cls.config_tz_aware,
                 replicaSet=cls.config_replica,
                 )
 
     @classmethod
     def _new_connection(cls):
         """ Return a new connection to this class' database. """
-        # Handle replica sets separately
+        kwargs = {
+                'host': cls.config_host,
+                'port': cls.config_port,
+                'max_pool_size': cls.config_max_pool_size,
+                'auto_start_request': cls.config_auto_start_request,
+                'use_greenlets': cls.config_use_greenlets,
+                'tz_aware': cls.config_tz_aware,
+                }
         if cls.config_replica:
-            return cls._new_replica_connection()
+            kwargs['replicaSet'] = cls.config_replica
+            logging.getLogger(__name__).info("Creating new MongoDB connection "
+                    "to '{}:{}' replica: {}".format(cls.config_host,
+                        cls.config_port, cls.config_replica))
+        else:
+            logging.getLogger(__name__).info("Creating new MongoDB connection "
+                "to '{}:{}'".format(cls.config_host, cls.config_port))
 
-        logging.getLogger(__name__).info("Creating new MongoDB connection to "
-                "'{}:{}'".format(cls.config_host, cls.config_port))
-
-        return pymongo.Connection(
-                host=cls.config_host,
-                port=cls.config_port,
-                max_pool_size=pyconfig.get('humbledb.connection_pool', 10),
-                auto_start_request=pyconfig.get('humbledb.auto_start_request',
-                    True),
-                use_greenlets=pyconfig.get('humbledb.use_greenlets', False),
-                tz_aware=True)
+        return cls.config_connection_cls(**kwargs)
 
     @classproperty
     def connection(cls):

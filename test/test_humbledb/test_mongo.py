@@ -1,9 +1,11 @@
 import mock
 import pymongo
 import pyconfig
+from unittest.case import SkipTest
 
 from ..util import *
 from humbledb import Mongo
+from humbledb import _version
 
 
 def teardown():
@@ -50,23 +52,47 @@ def test_harmless_end():
     DBTest.end()
 
 
-def test_replica():
-    try:
-        with mock.patch('pymongo.ReplicaSetConnection') as replica:
-            class Replica(Mongo):
-                config_host = 'localhost'
-                config_port = 27017
-                config_replica = 'test'
+def test_replica_works_for_versions_between_2_1_and_2_4():
+    if _version._lt('2.1') or _version._gte('2.4'):
+        raise SkipTest
 
-            with Replica:
-                pass
+    with mock.patch('pymongo.ReplicaSetConnection') as replica:
+        class Replica(Mongo):
+            config_host = 'localhost'
+            config_port = 27017
+            config_replica = 'test'
 
-            replica.assert_called_once()
-    except AttributeError, exc:
-        if pymongo.version < '2.1':
-            ok_('ReplicaSetConnection' in exc.message)
-        else:
-            raise
+        with Replica:
+            pass
+
+        replica.assert_called_once()
+
+
+def test_replica_works_for_versions_after_2_4():
+    if _version._lt('2.4'):
+        raise SkipTest
+
+    with mock.patch('pymongo.MongoReplicaSetClient') as replica:
+        class Replica(Mongo):
+            config_host = 'localhost'
+            config_port = 27017
+            config_replica = 'test'
+
+        with Replica:
+            pass
+
+        replica.assert_called_once()
+
+
+@raises(TypeError)
+def test_replica_errors_for_versions_before_2_1():
+    if _version._gte('2.1'):
+        raise SkipTest
+
+    class Replica(Mongo):
+        config_host = 'localhost'
+        config_port = 27017
+        config_replica = 'test'
 
 
 def test_reconnect():
@@ -78,14 +104,3 @@ def test_reconnect():
     DBTest.reconnect()
 
 
-@mock.patch('pymongo.ReplicaSetConnection')
-def test_config_replica_creates_replica_set_connection(conn):
-    class MyReplica(Mongo):
-        config_host = 'localhost'
-        config_port = 27017
-        config_replica = 'MyReplica'
-
-    with MyReplica:
-        pass
-
-    conn.assert_called_once()

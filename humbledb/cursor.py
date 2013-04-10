@@ -39,7 +39,7 @@ class Cursor(pymongo.cursor.Cursor):
         data = dict((k, v) for k, v in self.__dict__.iteritems()
                     if (k.startswith('_Cursor__') and k[9:] in values_to_clone)
                     or (k in more_values_to_clone))
-        if deepcopy:
+        if deepcopy and hasattr(self, '__deepcopy'):
             data = self.__deepcopy(data)
         clone.__dict__.update(data)
         return clone

@@ -108,7 +108,7 @@ class DictMap(DictProxy):
     def __delattr__(self, name):
         # Exclude private names from this behavior
         if name.startswith('_'):
-            return object.__delattr__(self, name, value)
+            return object.__delattr__(self, name)
 
         # If it's not mapped, let's delete it!
         if name not in self._name_map:

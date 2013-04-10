@@ -6,6 +6,17 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+3.1.0
+-----
+
+- Add support for :class:`~pymongo.MongoClient` and
+  :class:`~pymongo.MongoReplicaSetClient`.
+
+3.0.3
+-----
+
+- Fix bug in deleting embedded document keys via attributes.
+
 3.0.2
 -----
 

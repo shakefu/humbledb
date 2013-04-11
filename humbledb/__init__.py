@@ -18,27 +18,35 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-__version__ = '3.1.0'
+__version__ = '3.2.0'
 
 
 __all__ = [
+        # HumbleDB provides these
         'Index',
         'Mongo',
         'Document',
         'Embed',
         'report',
+        # Pymongo provides the rest
+        'errors',
         'ASC',
         'DESC',
         ]
+
+# Shortcuts to pymongo exceptions
+from pymongo import errors
 
 # Shortcuts to pymongo index directions
 import pymongo
 DESC = pymongo.DESCENDING
 ASC = pymongo.ASCENDING
+del pymongo  # Clean up the namespace
 
 from .index import Index
 from .mongo import Mongo
 from .document import Document, Embed
-# This needs to be imported last or it causes with circular imports
+# These need to be imported last or it causes with circular imports
+from . import array
 from . import report
 

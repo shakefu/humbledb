@@ -5,9 +5,6 @@ from test.util import *
 from humbledb import Document
 from humbledb.array import Array
 
-# Cache the list of dictionary words
-WORDS = []
-
 
 class TestArray(Array):
     config_database = database_name()
@@ -15,19 +12,13 @@ class TestArray(Array):
     config_max_size = 3
 
 
-def setup():
-    # Load the list of dictionary words
-    with open('/tmp/brit-a-z.txt') as words:
-        WORDS.extend(w.strip() for w in words.readlines())
-
-
 def teardown():
     DBTest.connection.drop_database(database_name())
 
 
 def _word():
-    """ Return a random dictionary word. """
-    return random.choice(WORDS)
+    """ Return a random "word". """
+    return str(random.randint(1, 15000))
 
 
 def test_document_without_configuration_works_as_mapper():
@@ -66,14 +57,14 @@ def test_pagination_syntax_design():
 
 
 def test_creates_a_new_page_on_first_insert():
-    t = TestArray('test_new_page', 0)
+    t = TestArray('new_page', 0)
     with DBTest:
         t.append("Test")
         eq_(t.pages(), 1)
 
 
 def test_all_returns_single_insert_ok():
-    t = TestArray('test_single_insert', 0)
+    t = TestArray('single_insert', 0)
     v = "Test"
     with DBTest:
         eq_(t.append(v), 1)
@@ -81,7 +72,7 @@ def test_all_returns_single_insert_ok():
 
 
 def test_appends_over_max_size_creates_second_page():
-    t = TestArray('test_appends_second_page', 0)
+    t = TestArray('appends_second_page', 0)
     with DBTest:
         eq_(t.append(_word()), 1)
         eq_(t.append(_word()), 1)
@@ -92,17 +83,17 @@ def test_appends_over_max_size_creates_second_page():
 
 
 def test_multiple_appends_with_zero_pages_works_ok():
-    t = TestArray('test_zero_pages', 0)
+    t = TestArray('zero_pages', 0)
     with DBTest:
         eq_(t.append(_word()), 1)
-    t = TestArray('test_zero_pages', 0)
+    t = TestArray('zero_pages', 0)
     with DBTest:
         eq_(t.append(_word()), 1)
         eq_(len(t.all()), 2)
 
 
 def test_length_for_single_page_works():
-    t = TestArray('test_length_single', 0)
+    t = TestArray('length_single', 0)
     with DBTest:
         t.append(_word())
         eq_(t.length(), 1)
@@ -113,7 +104,7 @@ def test_length_for_single_page_works():
 
 
 def test_length_for_multiple_pages_works():
-    t = TestArray('test_length_multi', 0)
+    t = TestArray('length_multi', 0)
     with DBTest:
         for i in xrange(10):
             t.append(_word())
@@ -122,7 +113,7 @@ def test_length_for_multiple_pages_works():
 
 
 def test_remove_works_with_single_page():
-    t = TestArray('test_remove', 0)
+    t = TestArray('remove', 0)
     v = "Test"
     with DBTest:
         t.append(_word())
@@ -132,7 +123,7 @@ def test_remove_works_with_single_page():
 
 
 def test_remove_works_with_multiple_pages():
-    t = TestArray('test_remove_multi_page', 0)
+    t = TestArray('remove_multi_page', 0)
     v = "Test"
     with DBTest:
         for i in xrange(5):
@@ -161,15 +152,15 @@ def test_class_errors_if_missing_collection():
 
 @raises(RuntimeError)
 def test_append_fails_if_page_is_missing():
-    t = TestArray('test_append_fails_with_missing_page', 0)
+    t = TestArray('append_fails_with_missing_page', 0)
     with DBTest:
         t.append(1)
-        t.page.remove({t.page.array_id: t.array_id})
+        t._page.remove({t._page.array_id: t.array_id})
         t.append(1)
 
 
 def test_clear_removes_all_pages():
-    t = TestArray('test_clear', 0)
+    t = TestArray('clear', 0)
     with DBTest:
         for i in xrange(10):
             t.append(_word())
@@ -181,7 +172,7 @@ def test_clear_removes_all_pages():
 
 
 def test_append_works_after_clearing():
-    t = TestArray('test_clear_and_append', 0)
+    t = TestArray('clear_and_append', 0)
     with DBTest:
         for i in xrange(10):
             t.append(_word())
@@ -194,3 +185,59 @@ def test_append_works_after_clearing():
         eq_(t.length(), 1)
         eq_(t.pages(), 1)
 
+
+def test_getitem_works_for_single_page():
+    t = TestArray('getitem_single', 0)
+    with DBTest:
+        for i in xrange(10):
+            t.append(i)
+        eq_(t.pages(), 4)
+        eq_(t[0], [0, 1, 2])
+        eq_(t[1], [3, 4, 5])
+        eq_(t[2], [6, 7, 8])
+        eq_(t[3], [9])
+
+
+def test_getitem_works_for_slices():
+    t = TestArray('getitem_sliced', 0)
+    with DBTest:
+        for i in xrange(10):
+            t.append(i)
+        eq_(t.pages(), 4)
+        eq_(t[0:1], [0, 1, 2])
+        eq_(t[1:2], [3, 4, 5])
+        eq_(t[0:2], [0, 1, 2, 3, 4, 5])
+        eq_(t[2:4], [6, 7, 8, 9])
+        eq_(t[0:100], range(10))
+
+
+@raises(TypeError)
+def test_getitem_does_not_work_for_extended_slices():
+    t = TestArray('test', 0)
+    t[0:1:2]
+
+
+@raises(TypeError)
+def test_getitem_disallows_non_integers():
+    t = TestArray('test', 0)
+    t['foo']
+
+
+@raises(IndexError)
+def test_getitem_raises_indexerror_for_out_of_range_when_empty():
+    t = TestArray('getitem_out_of_range_empty', 0)
+    with DBTest:
+        t[0]
+
+
+@raises(IndexError)
+def test_getitem_raises_indexerror_for_out_of_range():
+    t = TestArray('getitem_out_of_range', 0)
+    with DBTest:
+        for i in xrange(10):
+            t.append(i)
+        ok_(t[0])
+        ok_(t[1])
+        ok_(t[2])
+        ok_(t[3])
+        t[4]

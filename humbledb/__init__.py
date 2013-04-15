@@ -43,10 +43,13 @@ DESC = pymongo.DESCENDING
 ASC = pymongo.ASCENDING
 del pymongo  # Clean up the namespace
 
+# Import shortcuts to HumbleDB document basics
 from .index import Index
 from .mongo import Mongo
 from .document import Document, Embed
 # These need to be imported last or it causes with circular imports
 from . import array
 from . import report
-
+# Make pyflakes happy
+array = array
+report = report

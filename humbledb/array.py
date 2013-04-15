@@ -1,8 +1,7 @@
-import datetime
 import itertools
 
 import humbledb
-from humbledb import Mongo, Document, Embed, Index
+from humbledb import Document, Index
 
 
 class Page(Document):
@@ -35,7 +34,7 @@ class ArrayMeta(type):
             # Move the config to the page
             page_dict[member] = cls_dict.pop(member)
         # Create our page subclass
-        cls_dict['page'] = type(name + 'Page', (Page,), page_dict)
+        cls_dict['_page'] = type(name + 'Page', (Page,), page_dict)
         # Return our new Array
         return type.__new__(mcs, name, bases, cls_dict)
 
@@ -54,8 +53,10 @@ class Array(object):
 
     config_max_size = 500
     """ Soft limit on the maximum number of entries per page. """
+
     config_page_marker = u'#'
-    """ Combined with the base page _id to create the page _id. """
+    """ Combined with the array_id and page number to create the page _id. """
+
     config_padding = 0
     """ Number of bytes to pad new page creation with. """
 
@@ -81,7 +82,7 @@ class Array(object):
 
         """
         # Shortcut the page class
-        Page = self.page
+        Page = self._page
         # Create a new page instance
         page = Page()
         page._id = self.page_id(page_number)
@@ -113,7 +114,7 @@ class Array(object):
             self.page_count = 1
             self.new_page(self.page_count)
         # Shortcut page class
-        Page = self.page
+        Page = self._page
         # Append our entry to our page and get the page's size
         page = Page.find_and_modify({Page.array_id: self.array_id, Page.number:
             self.page_count}, {'$inc': {Page.size: 1}, '$push': {Page.entries:
@@ -134,16 +135,19 @@ class Array(object):
         :param dict spec: Dictionary matching items to be removed
 
         """
-        Page = self.page
+        Page = self._page
         result = Page.update({Page.array_id: self.array_id, Page.entries:
             spec}, {'$pull': {Page.entries: spec}, '$inc': {Page.size: -1}},
             multi=True, safe=True)
+        # Check the result
+        if 'updatedExisting' in result and result['updatedExisting']:
+            return True
+        return False
 
     def _all(self):
         """ Return a cursor for iterating over all the pages. """
-        Page = self.page
-        return Page.find({Page.array_id: self.array_id},
-                fields={Page.entries: 1, Page._id: 0})
+        Page = self._page
+        return Page.find({Page.array_id: self.array_id})
 
     def all(self):
         """ Return all entries in this array. """
@@ -152,67 +156,55 @@ class Array(object):
 
     def clear(self):
         """ Remove all documents in this array. """
-        self.page.remove({self.page.array_id: self.array_id}, safe=True)
+        self._page.remove({self._page.array_id: self.array_id}, safe=True)
         self.page_count = 0
 
     def length(self):
         """ Return the total number of items in this array. """
         # This is implemented rather than __len__ because it incurs a query,
         # and we don't want to query transparently
-        Page = self.page
+        Page = self._page
         cursor = Page.find({Page.array_id: self.array_id}, fields={Page.size:
             1, Page._id: 0})
         return sum(p.size for p in cursor)
 
     def pages(self):
         """ Return the total number of pages in this array. """
-        Page = self.page
+        Page = self._page
         return Page.find({Page.array_id: self.array_id}).count()
 
     def __getitem__(self, index):
-        raise NotImplementedError("This method does not work well, yet.")
+        """
+        Return a page or pages for the given index or slice respectively.
 
+        :param index: Integer index or ``slice()`` object
+
+        """
+        if not isinstance(index, (int, slice)):
+            raise TypeError("Array indices must be integers, not %s" %
+                    type(index))
+        Page = self._page  # Shorthand the Page class
+        # If we have an integer index, it's a simple query for the page number
         if isinstance(index, int):
             if index < 0:
                 raise IndexError("Array indices must be positive")
-            skip = index
-            limit = 1
-            single = True
-        elif isinstance(index, slice):
-            if index.step:
-                raise TypeError("Arrays do not allow extended slices"  %
-                        type(self))
-            skip = index.start
-            limit = index.stop - index.start
-            single = False
-        else:
-            raise TypeError("Array indices must be integers, not %s" %
-                    type(index))
-        result = []
-        number = 1
-        Page = self.page
-        while limit > 0:
+            # Page numbers are not zero indexed
+            index += 1
             page = Page.find_one({Page.array_id: self.array_id, Page.number:
-                number}, {Page.size: 1, Page.entries: {'$slice': [skip,
-                    limit]}})
-            result += page.entries
-            skip = max(0, skip - page.size)
-            limit -= len(page.entries)
-            number += 1
-
-        '''
-        cursor = Page.find({Page.array_id: self.array_id}, {Page.size: 1,
-            Page.entries: {'$slice': [skip, limit]}}).sort(Page.number)
-        for page in cursor:
-            result += page.entries
-            skip = max(0, skip - page.size)
-            limit -= len(page.entries)
-            if not limit:
-                break
-        '''
-        if single and result:
-            return result[0]
-        elif single:
-            raise IndexError("array index not present")
-        return result
+                index})
+            if not page:
+                raise IndexError("Array index out of range")
+            return page.entries
+        # If we have a slice, we attempt to get the pages for [start, stop)
+        if isinstance(index, slice):
+            if index.step:
+                raise TypeError("Arrays do not allow extended slices")
+            # Page numbers are not zero indexed
+            start = index.start + 1
+            stop = index.stop + 1
+            cursor = Page.find({Page.array_id: self.array_id, Page.number:
+                {'$gte': start, '$lt': stop}})
+            return list(itertools.chain.from_iterable(p.entries for p in
+                cursor))
+        # This comment will never be reached
 

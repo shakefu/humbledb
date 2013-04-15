@@ -32,30 +32,6 @@ def test_document_without_configuration_works_as_mapper():
     eq_(entry._asdict(), {u'name': 'Test'})
 
 
-def test_pagination_syntax_design():
-    raise SkipTest
-
-    class Entry(Document):
-        name = 'n'
-        display = 'd'
-
-    # array = Group.array
-    class GroupArray(Array):
-        config_database = 'group'
-        config_collection = 'group_entries'
-
-    array = GroupArray(_id=group._id, pages=group.pages)
-    entry = Entry()
-    entry.name = 'jake'
-    entry.display = ("Jake", "Alheid")
-
-    with DBTest:
-        array.append(entry)
-        array.all()
-        array.remove({Entry.name: entry.name})
-        array.clear()
-
-
 def test_creates_a_new_page_on_first_insert():
     t = TestArray('new_page', 0)
     with DBTest:

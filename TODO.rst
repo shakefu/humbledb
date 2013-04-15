@@ -6,6 +6,7 @@ Documentation
 -------------
 
 - Add documentation for Reports
+- Add documentation for Arrays
 - Update changelog
 
 Implementation

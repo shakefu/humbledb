@@ -46,10 +46,11 @@ class DictMap(DictProxy):
         the highest level is the main document.
 
     """
-    def __init__(self, value, name_map, parent, key):
+    def __init__(self, value, name_map, parent, key, reverse_name_map):
         self._parent = parent
         self._key = key
         self._name_map = name_map
+        self._reverse_name_map = reverse_name_map
         super(DictMap, self).__init__(value)
 
     @property
@@ -72,17 +73,19 @@ class DictMap(DictProxy):
         else:
             key = attr
 
+        reverse_name_map = self._reverse_name_map[key]
+
         # Return the value if we have it
         if key in self:
             value = self[key]
             if isinstance(value, dict):
-                value = DictMap(value, attr, self, key)
+                value = DictMap(value, attr, self, key, reverse_name_map)
             elif isinstance(value, list):
-                value = ListMap(value, attr, self, key)
+                value = ListMap(value, attr, self, key, reverse_name_map)
             return value
 
         if isinstance(attr, NameMap):
-            return DictMap({}, attr, self, key)
+            return DictMap({}, attr, self, key, reverse_name_map)
 
         # TODO: Decide whether to allow non-mapped keys via attribute access
         object.__getattribute__(self, name)
@@ -156,12 +159,30 @@ class DictMap(DictProxy):
             # Raise an error
             super(DictMap, self).__delitem__(key)
 
+    def for_json(self):
+        """ Return this suitable for JSON encoding. """
+        mapped = {}
+        reverse_name_map = self._reverse_name_map
+        # We iterate over the keys contained in this. If a key is in the
+        # reverse_name_map, which maps key name -> attr name, we use the
+        # attribute name instead, since long names are preferred for JSON.
+        for key in self:
+            if key in reverse_name_map:
+                key = reverse_name_map[key]
+            # In order to allow recursive mapping, we use getattr() to get the
+            # value of the key, so sub documents will be wrapped in their own
+            # DictMap, which can handle enconding to JSON.
+            value = getattr(self, key)
+            mapped[key] = value
+        return mapped
+
 
 class ListMap(ListProxy):
-    def __init__(self, value, name_map, parent, key):
+    def __init__(self, value, name_map, parent, key, reverse_name_map):
         self._parent = parent
         self._key = key
         self._name_map = name_map
+        self._reverse_name_map = reverse_name_map
         super(ListMap, self).__init__(value)
 
     def new(self):
@@ -172,13 +193,18 @@ class ListMap(ListProxy):
         self.append(value)
         # Return it wrapped in a DictMap
         # We pass None as the 'key' so that an IndexError would be raised if
-        # the dict map tries to 
-        return DictMap(value, self._name_map, self, None)
+        # the dict map tries to modify the parent
+        return DictMap(value, self._name_map, self, None,
+                self._reverse_name_map)
 
     def __getitem__(self, index):
         value = super(ListMap, self).__getitem__(index)
         if isinstance(value, dict):
-            value = DictMap(value, self._name_map, self, None)
+            value = DictMap(value, self._name_map, self, None,
+                    self._reverse_name_map)
         return value
 
+    def for_json(self):
+        """ Return this suitable for JSON encoding. """
+        return list(self)
 

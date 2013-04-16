@@ -6,6 +6,7 @@ from functools import wraps
 import pymongo
 import pyconfig
 
+from humbledb import _version
 from humbledb.index import Index
 from humbledb.mongo import Mongo
 from humbledb.cursor import Cursor
@@ -319,10 +320,9 @@ class Document(dict):
                 self.__class__.__name__,
                 super(Document, self).__repr__())
 
-    def _asdict(self):
+    def for_json(self):
         """ Return this document as a dictionary, with short key names mapped
-            to long names. This method is used by simplejson and
-            :meth:`pytools.json.as_json`.
+            to long names. This method is used by :meth:`pytools.json.as_json`.
         """
         # Get the reverse mapped keys
         reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
@@ -365,22 +365,27 @@ class Document(dict):
     def __getattr__(self, name):
         # Get the mapped attributes
         name_map = object.__getattribute__(self, '_name_map')
+        reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
         # If the attribute is mapped, map it!
         if name in name_map:
             # name_map is a dict key and potentially a NameMap too here
             name_map = name_map[name]
+            key = str(name_map)
+            reverse_name_map = reverse_name_map[key]
             # Check if we actually have a key for that value
-            if name_map in self:
-                value = self[name_map]
+            if key in self:
+                value = self[key]
                 # If it's a dict, we need to keep mapping subkeys
                 if isinstance(value, dict):
-                    value = DictMap(value, name_map, self, name_map)
+                    value = DictMap(value, name_map, self, key,
+                            reverse_name_map)
                 elif isinstance(value, list):
-                    value = ListMap(value, name_map, self, name_map)
+                    value = ListMap(value, name_map, self, key,
+                            reverse_name_map)
                 return value
             elif isinstance(name_map, NameMap):
                 # Return an empty dict map to allow sub-key assignment
-                return DictMap({}, name_map, self, name_map)
+                return DictMap({}, name_map, self, key, reverse_name_map)
             else:
                 # Return if a mapped attribute is missing
                 return None
@@ -430,9 +435,10 @@ class Document(dict):
                 if isinstance(index, Index):
                     index.ensure(cls)
                 else:
+                    caching_key = 'cache_for' if _version._gte('2.3') else 'ttl'
+                    kwargs = {caching_key: (60 * 60 * 24)}
                     cls.collection.ensure_index(getattr(cls, index),
-                            background=True,
-                            cache_for=(60 * 60 * 24))
+                            background=True, **kwargs)
 
         logging.getLogger(__name__).info("Indexing ensured.")
         cls._ensured = True
@@ -445,3 +451,4 @@ class Document(dict):
                     pyconfig.
                 """
                 cls._ensured = False
+

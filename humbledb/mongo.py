@@ -26,7 +26,21 @@ class MongoMeta(type):
         # Choose the correct connection class
         if cls_dict.get('config_connection_cls', UNSET) is UNSET:
             # Are we using a replica?
-            if cls_dict.get('config_replica', UNSET):
+            # XXX: Getting the connection type at class creation time rather
+            # than connection instantiation time means that disabling
+            # config_replica (setting to None) at runtime has no effect. I
+            # doubt anyone would ever do this, but you never know.
+            _replica = cls_dict.get('config_replica', UNSET)
+            # Handle attribute descriptors responsibly
+            if _replica and hasattr(_replica, '__get__'):
+                try:
+                    _replica = _replica.__get__(None, None)
+                except:
+                    raise TypeError("'%s.config_replica' appears to be a "
+                            "descriptor and its value could not be "
+                            "retrieved reliably." % name)
+            # Handle replica set connections
+            if _replica:
                 if _version._lt('2.1'):
                     raise TypeError("Need pymongo.version >= 2.1 for replica "
                             "sets.")

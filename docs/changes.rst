@@ -6,6 +6,12 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+3.2.0
+-----
+
+- Add the :module:`humbledb.array` module and :class:`humbledb.array.Array`
+  class for easily working with very large paginated arrays in MongoDB.
+
 3.1.0
 -----
 

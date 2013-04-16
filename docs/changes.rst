@@ -6,6 +6,16 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+3.3.0
+-----
+
+- Implement ``for_json()`` hook on :class:`~humbledb.document.Document`,
+  :class:`~humbledb.maps.DictMap` and :class:`~humbledb.maps.ListMap`.
+- Implement version checking for ``ttl`` vs. ``cache_for`` keyword to
+  :func:`ensure_index`.
+- Fix :attr:`~humbledb.mongo.Mongo.config_replica` handling when config_replica
+  is set to a descriptor class (i.e. a ``pyconfig.setting()`` instance).
+
 3.2.0
 -----
 

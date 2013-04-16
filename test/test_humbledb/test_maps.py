@@ -1,3 +1,5 @@
+import pytool
+
 from ..util import *
 from humbledb.maps import ListMap
 from humbledb import Document, Embed
@@ -263,3 +265,62 @@ def test_modified_items_save_ok():
 
     eq_(total, 60)
 
+
+def test_embedded_lists_are_json_serializable():
+    class BasicList(DocTest):
+        vals = 'l'
+
+    doc = BasicList()
+    doc.vals = ['a', 'b', 'c']
+
+    eq_(pytool.json.as_json(doc.vals), '["a", "b", "c"]')
+
+
+def test_embedded_lists_with_embedded_docs_are_json_serializable():
+    doc = ListTest()
+    doc.vals = []
+    item = doc.vals.new()
+    item.one = 1
+    item.two = 2
+
+    json = pytool.json.as_json(doc.vals)
+    ok_(json)
+    ok_('"one": 1' in json)
+    ok_('"two": 2' in json)
+    ok_(json.startswith('[{"'))
+    ok_(json.endswith('}]'))
+    eq_(len(json), len('[{"one": 1, "two": 2}]'))
+
+
+def test_deeply_embedded_documents_are_json_serializable():
+    class Test(DocTest):
+        one = Embed('o')
+        one.two = Embed('t')
+        one.two.three = Embed('r')
+        one.two.three.four = 'f'
+
+    doc = Test()
+    doc.one.two.three.four = 4
+
+    eq_(pytool.json.as_json(doc), '{"one": {"two": {"three": {"four": 4}}}}')
+    eq_(pytool.json.as_json(doc.one), '{"two": {"three": {"four": 4}}}')
+    eq_(pytool.json.as_json(doc.one.two), '{"three": {"four": 4}}')
+    eq_(pytool.json.as_json(doc.one.two.three), '{"four": 4}')
+
+
+def test_deeply_embedded_documents_and_lists():
+    class Test(DocTest):
+        one = Embed('o')
+        one.two = Embed('t')
+        one.two.three = Embed('r')
+        one.two.three.four = 'f'
+
+    doc = Test()
+    doc.one = []
+    one_item = doc.one.new()
+    one_item.two.three = []
+    three_item = one_item.two.three.new()
+    three_item.four = ['five']
+
+    eq_(pytool.json.as_json(doc), '{"one": [{"two": {"three": [{"four": '
+            '["five"]}]}}]}')

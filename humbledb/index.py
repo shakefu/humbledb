@@ -2,6 +2,8 @@
 """
 from pytool.lang import UNSET
 
+from humbledb import _version
+
 
 class Index(object):
     """ This class is used to create more complex indices. Takes the same
@@ -24,9 +26,13 @@ class Index(object):
             **kwargs):
         self.index = index
 
-        # Remerge kwargs
+        # Merge kwargs
         kwargs['cache_for'] = cache_for
         kwargs['background'] = background
+
+        if _version._lt('2.3') and 'cache_for' in kwargs:
+            kwargs['ttl'] = kwargs.pop('cache_for')
+
         self.kwargs = kwargs
 
     def ensure(self, cls):
@@ -37,6 +43,7 @@ class Index(object):
         """
         # Map the attribute name to its key name, or just let it ride
         index = self._resolve_index(cls)
+
         # Make the ensure index call
         cls.collection.ensure_index(index, **self.kwargs)
 

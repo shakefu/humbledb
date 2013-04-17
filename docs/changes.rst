@@ -15,6 +15,8 @@ This section contains all the changes that I can remember, by version.
   :func:`ensure_index`.
 - Fix :attr:`~humbledb.mongo.Mongo.config_replica` handling when config_replica
   is set to a descriptor class (i.e. a ``pyconfig.setting()`` instance).
+- Removed :meth:`humbledb.document.Document._asdict`. Use
+  :meth:`~humbledb.document.Document.for_json` instead.
 
 3.2.0
 -----

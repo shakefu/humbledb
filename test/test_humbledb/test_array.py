@@ -29,7 +29,7 @@ def test_document_without_configuration_works_as_mapper():
     entry = Entry()
     entry.name = "Test"
     eq_(entry, {Entry.name: "Test"})
-    eq_(entry._asdict(), {u'name': 'Test'})
+    eq_(entry.for_json(), {u'name': 'Test'})
 
 
 def test_creates_a_new_page_on_first_insert():

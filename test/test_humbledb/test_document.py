@@ -87,8 +87,8 @@ def test_unmapped_fields():
     n = DocTest(foo='bar')
     ok_('foo' in n)
     eq_(n['foo'], 'bar')
-    ok_('foo' in n._asdict())
-    eq_(n._asdict()['foo'], 'bar')
+    ok_('foo' in n.for_json())
+    eq_(n.for_json()['foo'], 'bar')
 
 
 def test_instance_dictproxy_attr():
@@ -177,8 +177,8 @@ def test_document_repr():
     eq_(repr(DocTest(d)), "DocTest({})".format(repr(d)))
 
 
-def test_asdict():
-    eq_(DocTest({'u': 'test_name'})._asdict(), {'user_name': 'test_name'})
+def test_for_json():
+    eq_(DocTest({'u': 'test_name'}).for_json(), {'user_name': 'test_name'})
 
 
 def test_nonstring():
@@ -445,10 +445,10 @@ def test_delete_subsubdoc():
     eq_(t, {})
 
 
-def test_embed_asdict():
+def test_embed_for_json():
     t = EmbedTestDoc()
     t.embed.embed.attr = 'hello'
-    eq_(t._asdict(), {'embed': {'embed': {'attr': 'hello'}}})
+    eq_(t.for_json(), {'embed': {'embed': {'attr': 'hello'}}})
 
 
 def test_embed_retrieval_types():

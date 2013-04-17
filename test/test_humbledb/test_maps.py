@@ -159,7 +159,7 @@ def test_lists_are_mapped():
 def test_embedded_list_as_json_replaces_embedded_doc_field_names():
     doc = ListTest()
     doc.vals = [{'o': 'hello'}, 'world']
-    eq_(doc._asdict(), {'vals': [{'one': 'hello'}, 'world']})
+    eq_(doc.for_json(), {'vals': [{'one': 'hello'}, 'world']})
 
 
 def test_embedded_list_as_json_recursively_sets_field_names():
@@ -171,7 +171,7 @@ def test_embedded_list_as_json_recursively_sets_field_names():
 
     doc = Test()
     doc.vals = [{'s': [{'t': 'hello'}], 'o': 1}, {'o': 1}]
-    eq_(doc._asdict(), {'vals': [{'sub': [{'two': 'hello'}], 'one': 1},
+    eq_(doc.for_json(), {'vals': [{'sub': [{'two': 'hello'}], 'one': 1},
         {'one': 1}]})
 
 
@@ -186,7 +186,7 @@ def test_embedded_list_creation_with_attributes():
     val = doc.vals.new()
     val.one = 1
     val.two = 2
-    eq_(doc._asdict(), {'vals': [{'one': 1, 'two': 2}]})
+    eq_(doc.for_json(), {'vals': [{'one': 1, 'two': 2}]})
 
 
 def test_embedded_list_with_crazy_complex_heirarchy():

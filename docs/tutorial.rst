@@ -699,6 +699,8 @@ called before any :meth:`~pymongo.collection.Collection.find`,
               Index('tags', sparse=True),
               # Directional indexes with additional creation arguments
               Index([('slug', humbledb.DESC)], unique=True),
+              # Embedded indexes
+              Index('meta.url')
               # Compound indexes
               Index([('author', humbledb.ASC), ('timestamp', humbledb.DESC)]),
          ]
@@ -709,6 +711,8 @@ called before any :meth:`~pymongo.collection.Collection.find`,
       title = 't'
       slug = 's'
       content = 'c'
+      meta = Embed('m')
+      meta.url = 'u'
 
 .. _subclassing-mongo:
 

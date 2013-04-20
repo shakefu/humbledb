@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-__version__ = '3.4.0-dev'
+__version__ = '4.0.0'
 
 
 # We only want to allow * imports for the most common classes. If you want

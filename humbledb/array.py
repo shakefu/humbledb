@@ -1,27 +1,25 @@
 import itertools
 
 import humbledb
-from humbledb import Document, Index
+from humbledb import Document, UNSET
+from humbledb.errors import NoConnection
 
 
 class Page(Document):
     """ Document class used by :class:`Array`. """
-    config_indexes = [Index([('array_id', 1), ('number', 1)])]
-
-    array_id = 'i'  # _id of Array group of docs
-    number = 'n'  # Page number
     size = 's'   # Number of entries in this page
     entries = 'e'  # Array of entries
 
 
 class ArrayMeta(type):
     """
-    MetaClass for Arrays. This ensures that we have all the needed
-    configuration options, as well as creating the :class:`Page` subclass.
+    Metaclass for Arrays. This ensures that we have all the needed
+    configuration options, as well as creating the :class:`Page` subclass that
+    is specific to each Array subclass.
 
     """
     def __new__(mcs, name, bases, cls_dict):
-        # Skip the Array base clas
+        # Skip the Array base class
         if name == 'Array' and bases == (object,):
             return type.__new__(mcs, name, bases, cls_dict)
         # The dictionary for subclassing the Page document
@@ -33,10 +31,28 @@ class ArrayMeta(type):
                     member))
             # Move the config to the page
             page_dict[member] = cls_dict.pop(member)
-        # Create our page subclass
+        # Create our page subclass and assign to cls._page
         cls_dict['_page'] = type(name + 'Page', (Page,), page_dict)
         # Return our new Array
         return type.__new__(mcs, name, bases, cls_dict)
+
+    # Shortcut methods
+    @property
+    def size(cls): return cls._page.size
+
+    @property
+    def entries(cls): return cls._page.entries
+
+    @property
+    def find(cls): return cls._page.find
+
+    @property
+    def update(cls): return cls._page.update
+
+    @property
+    def remove(cls):  # This needs a try/except for nosetests
+        try: return cls._page.remove
+        except NoConnection: pass  # Collection not available yet
 
 
 class Array(object):
@@ -45,8 +61,12 @@ class Array(object):
     MongoDB. This class is designed to be inherited from, and not instantiated
     directly.
 
-    :param str _id: Array _id
-    :param int page_count: Total number of pages that already exist
+    If you know the `page_count` for this array ahead of time, passing it in
+    to the constructor will save an extra query on the first append for a given
+    instance.
+
+    :param str _id: Sets the array's shared id
+    :param int page_count: Total number of pages that already exist (optional)
 
     """
     __metaclass__ = ArrayMeta
@@ -60,19 +80,28 @@ class Array(object):
     config_padding = 0
     """ Number of bytes to pad new page creation with. """
 
-    def __init__(self, _id, page_count):
-        self.array_id = _id
+    def __init__(self, _id, page_count=UNSET):
+        self._array_id = _id
         self.page_count = page_count
 
-    def page_id(self, page_number):
+    def page_id(self, page_number=None):
         """
-        Return the document ID for `page_number`.
+        Return the document ID for `page_number`. If page number is not
+        specified the :attr:`Array.page_count` is used.
 
-        :param int page_number: A page number
+        :param int page_number: A page number (optional)
 
         """
-        return "{}{}{}".format(self.array_id, self.config_page_marker,
-                page_number)
+        page_number = page_number or self.page_count or 0
+        return "{}{:05d}".format(self._id, page_number)
+
+    @property
+    def _id(self):
+        return "{}{}".format(self._array_id, self.config_page_marker)
+
+    @property
+    def _id_regex(self):
+        return {'$regex': '^' + self._id}
 
     def new_page(self, page_number):
         """
@@ -86,20 +115,17 @@ class Array(object):
         # Create a new page instance
         page = Page()
         page._id = self.page_id(page_number)
-        page.array_id = self.array_id
-        page.number = page_number
         page.size = 0
         page.entries = []
         page['padding'] = '0' * self.config_padding
         # Insert the new page
         try:
-            Page.insert(page, safe=True)
+            Page.insert(page)
         except humbledb.errors.DuplicateKeyError:
             # A race condition already created this page, so we are done
             return
         # Remove the padding
-        Page.update({Page._id: page._id}, {'$unset': {'padding': 1}},
-                safe=True)
+        Page.update({'_id': page._id}, {'$unset': {'padding': 1}})
 
     def append(self, entry):
         """
@@ -109,16 +135,21 @@ class Array(object):
         :returns: Total number of pages
 
         """
+        # If we haven't set a page count, we query for it. This is generally a
+        # very fast query.
+        if self.page_count is UNSET:
+            self.page_count = self.pages()
         # See if we have to create our initial page
         if self.page_count < 1:
             self.page_count = 1
             self.new_page(self.page_count)
         # Shortcut page class
         Page = self._page
+        query = {'_id': self.page_id()}
+        modify = {'$inc': {Page.size: 1}, '$push': {Page.entries: entry}}
+        fields = {Page.size: 1}
         # Append our entry to our page and get the page's size
-        page = Page.find_and_modify({Page.array_id: self.array_id, Page.number:
-            self.page_count}, {'$inc': {Page.size: 1}, '$push': {Page.entries:
-                entry}}, new=True, fields={Page.size: 1})
+        page = Page.find_and_modify(query, modify, new=True, fields=fields)
         if not page:
             raise RuntimeError("Append failed: page does not exist.")
         # If we need to, we create the next page
@@ -130,24 +161,34 @@ class Array(object):
 
     def remove(self, spec):
         """
-        Remove `spec` from this array.
+        Remove the first element matching `spec` from this array.
 
         :param dict spec: Dictionary matching items to be removed
+        :returns: ``True`` if an element was removed
 
         """
         Page = self._page
-        result = Page.update({Page.array_id: self.array_id, Page.entries:
-            spec}, {'$pull': {Page.entries: spec}, '$inc': {Page.size: -1}},
-            multi=True, safe=True)
-        # Check the result
-        if 'updatedExisting' in result and result['updatedExisting']:
+        # Since we can't reliably use dot-notation when the query is against an
+        # embedded document, we need to use the $elemMatch operator instead
+        if isinstance(spec, dict):
+            query_spec = {'$elemMatch': spec}
+        else:
+            query_spec = spec
+        query = {'_id': self._id_regex, Page.entries: query_spec}
+        modify = {'$unset': {Page.entries+'.$': spec}, '$inc': {Page.size: -1}}
+        fields = {'_id': 1}
+        doc = Page.find_and_modify(query, modify, fields=fields, sort=fields)
+        if not doc:
+            return
+        result = Page.update(doc, {'$pull': {Page.entries: None}})
+        # Check the result and return True if anything was modified
+        if result and result.get('updatedExisting', None):
             return True
-        return False
 
     def _all(self):
         """ Return a cursor for iterating over all the pages. """
         Page = self._page
-        return Page.find({Page.array_id: self.array_id})
+        return Page.find({'_id': self._id_regex}).sort('_id')
 
     def all(self):
         """ Return all entries in this array. """
@@ -156,7 +197,7 @@ class Array(object):
 
     def clear(self):
         """ Remove all documents in this array. """
-        self._page.remove({self._page.array_id: self.array_id}, safe=True)
+        self._page.remove({self._page._id: self._id_regex})
         self.page_count = 0
 
     def length(self):
@@ -164,14 +205,14 @@ class Array(object):
         # This is implemented rather than __len__ because it incurs a query,
         # and we don't want to query transparently
         Page = self._page
-        cursor = Page.find({Page.array_id: self.array_id}, fields={Page.size:
-            1, Page._id: 0})
+        cursor = Page.find({'_id': self._id_regex}, fields={Page.size:
+            1, '_id': 0})
         return sum(p.size for p in cursor)
 
     def pages(self):
         """ Return the total number of pages in this array. """
         Page = self._page
-        return Page.find({Page.array_id: self.array_id}).count()
+        return Page.find({'_id': self._id_regex}).count()
 
     def __getitem__(self, index):
         """
@@ -190,8 +231,7 @@ class Array(object):
                 raise IndexError("Array indices must be positive")
             # Page numbers are not zero indexed
             index += 1
-            page = Page.find_one({Page.array_id: self.array_id, Page.number:
-                index})
+            page = Page.find_one({'_id': self.page_id(index)})
             if not page:
                 raise IndexError("Array index out of range")
             return page.entries
@@ -199,12 +239,16 @@ class Array(object):
         if isinstance(index, slice):
             if index.step:
                 raise TypeError("Arrays do not allow extended slices")
+            if index.start and index.start < 0:
+                raise IndexError("Array indices must be positive")
+            if index.stop and index.stop < 0:
+                raise IndexError("Array indices must be positive")
             # Page numbers are not zero indexed
-            start = index.start + 1
-            stop = index.stop + 1
-            cursor = Page.find({Page.array_id: self.array_id, Page.number:
-                {'$gte': start, '$lt': stop}})
+            start = (index.start or 0) + 1
+            stop = (index.stop or 2**32) + 1
+            start = '{}{:05d}'.format(self._id, start)
+            stop = '{}{:05d}'.format(self._id, stop)
+            cursor = Page.find({'_id': {'$gte': start, '$lt': stop}})
             return list(itertools.chain.from_iterable(p.entries for p in
                 cursor))
         # This comment will never be reached
-

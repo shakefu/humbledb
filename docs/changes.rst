@@ -6,6 +6,54 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+4.0.0
+-----
+
+.. currentmodule:: humbledb
+
+- This release may break backwards compatibility.
+- Restrict ``from humbledb import *`` to only basic document classes
+  (:class:`~mongo.Mongo`, :class:`~document.Document`,
+  :class:`~document.Embed`, :class:`~index.Index`).
+- Create new :mod:`humbledb.errors` module, which contains shortcuts to Pymongo
+  specific errors, as well as the new exceptions: :exc:`~errors.NoConnection`,
+  :exc:`~errors.NestedConnection`, and :exc:`~errors.MissingConfig`.
+- :class:`~document.Document` will now raise :exc:`~errors.MissingConfig` and
+  :exc:`~errors.NoConnection`. The previous behavior was to raise just a
+  ``RuntimeError``.
+- :class:`~mongo.Mongo` subclasses add the new configuration option
+  :attr:`~mongo.Mongo.config_write_concern`. This now defaults to ``1``, which
+  may break backwards compatibility. The previous behavior depended on which
+  version of Pymongo you were using.
+- :class:`~mongo.Mongo` will now raise :exc:`~errors.NestedConnection`.
+- :class:`~document.Document` instances which do not map attributes for
+  embedded documents will no longer wrap the accessed embedded documents in
+  :class:`~maps.DictMap` instances. This should improve performance
+  substantially for very large documents with many unmapped, embedded
+  documents.
+- The :class:`~array.Array` class has been refactored to no longer need the
+  ``array_id`` and ``number`` fields, or the index on them. It now leverages
+  regex queries against the ``_id`` field instead.
+- The :class:`~array.Array` class now has shortcut properties for accessing the
+  following attributes on the :class:`~array.Page` class: find, update, remove,
+  entries, size. The find, update, and remove attributes require a
+  :class:`~mongo.Mongo` (or a subclass) connection context.
+- The ``page_count`` parameter to :class:`~array.Array` is not longer required.
+  If omitted, the number of pages will be queried for before the first append
+  operation.
+- :meth:`~array.Array.remove` now only removes the first matching element
+  found. The previous behavior was to remove all matching elements, but this
+  meant that the :meth:`Array.length` could get out of sync with the actual
+  size.
+
+3.3.1
+-----
+
+- Now depends on Pytool >= 3.0.1. This may break your installation since Pytool
+  3.0.1 depends on Simplejson 3.2.0, which is not yet released as of this
+  writing. If you need Simplejson 3.2.0, you can build it from
+  `http://github.com/shakefu/simplejson`_.
+
 3.3.0
 -----
 

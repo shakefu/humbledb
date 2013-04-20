@@ -11,6 +11,7 @@ from humbledb.index import Index
 from humbledb.mongo import Mongo
 from humbledb.cursor import Cursor
 from humbledb.maps import DictMap, NameMap, ListMap
+from humbledb.errors import NoConnection, MissingConfig
 
 COLLECTION_METHODS = set([_ for _ in dir(pymongo.collection.Collection) if not
     _.startswith('_') and callable(getattr(pymongo.collection.Collection, _))])
@@ -93,11 +94,12 @@ class CollectionAttribute(object):
         database = self.config_database
         collection = self.config_collection
         if not database or not collection:
-            raise RuntimeError("Missing config_database or config_collection")
+            raise MissingConfig("Missing config_database or config_collection")
         # Only allow access to the collection in a Mongo context
         if Mongo.context:
             return Mongo.context.connection[database][collection]
-        raise RuntimeError("'collection' not available without context")
+        raise NoConnection("'collection' unavailable without connection "
+                "context")
 
 
 class DocumentMeta(type):

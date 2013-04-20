@@ -4,11 +4,18 @@ import pyconfig
 
 import humbledb
 from ..util import *
-from humbledb import Mongo, Document, Embed
+from humbledb import Mongo, Document, Embed, _version
 
 
 def teardown():
     DBTest.connection.drop_database(database_name())
+
+
+def cache_for(val):
+    # This is a work around for the version changing the cache argument
+    if _version._lt('2.3'):
+        return {'ttl': val}
+    return {'cache_for': val}
 
 
 class DocTest(Document):
@@ -130,7 +137,7 @@ def test_ensure_indexes_calls_ensure_index():
             coll.ensure_index.assert_called_with(
                     Test.user_name,
                     background=True,
-                    cache_for=60*60*24)
+                    **cache_for(60*60*24))
 
 
 def test_ensure_indexes_reload_hook():

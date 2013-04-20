@@ -18,24 +18,20 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-__version__ = '3.3.1'
+__version__ = '3.4.0-dev'
 
 
+# We only want to allow * imports for the most common classes. If you want
+# anything else, import it directly.
 __all__ = [
-        # HumbleDB provides these
         'Index',
         'Mongo',
         'Document',
         'Embed',
-        'report',
-        # Pymongo provides the rest
-        'errors',
-        'ASC',
-        'DESC',
         ]
 
-# Shortcuts to pymongo exceptions
-from pymongo import errors
+# Shortcut to pytool.lang.UNSET
+from pytool.lang import UNSET
 
 # Shortcuts to pymongo index directions
 import pymongo
@@ -47,9 +43,15 @@ del pymongo  # Clean up the namespace
 from .index import Index
 from .mongo import Mongo
 from .document import Document, Embed
-# These need to be imported last or it causes with circular imports
+
+# Import array and report framework modules. These need to be imported last or
+# it causes with circular imports
 from . import array
 from . import report
+
+# Exceptions module
+from . import errors
+
 # Make pyflakes happy
 array = array
 report = report

@@ -98,6 +98,9 @@ def test_bad_embedded_mappings_raise_an_attribute_error_on_the_instance():
 
 
 def test_embedded_key_retrieval_on_instance_is_none():
+    m = MapTest()
+    print type(m.em)
+    print type(m.em.val)
     eq_(MapTest().em.val, {})
 
 
@@ -324,3 +327,17 @@ def test_deeply_embedded_documents_and_lists():
 
     eq_(pytool.json.as_json(doc), '{"one": [{"two": {"three": [{"four": '
             '["five"]}]}}]}')
+
+
+def test_unmapped_list_works_with_new():
+    class List(DocTest):
+        vals = 'v'
+
+    l = List()
+    l.vals = []
+    v = l.vals.new()
+    v['1'] = 1
+
+    eq_(l, {'v': [{'1': 1}]})
+
+

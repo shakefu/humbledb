@@ -2,14 +2,15 @@ import random
 from unittest.case import SkipTest
 
 from test.util import *
-from humbledb import Document
 from humbledb.array import Array
+from humbledb import Document, UNSET
 
 
 class TestArray(Array):
     config_database = database_name()
     config_collection = 'arrays'
     config_max_size = 3
+    config_padding = 100
 
 
 def teardown():
@@ -96,6 +97,8 @@ def test_remove_works_with_single_page():
         t.append(v)
         t.append(_word())
         eq_(t.length(), 3)
+        t.remove(v)
+        eq_(t.length(), 2)
 
 
 def test_remove_works_with_multiple_pages():
@@ -112,6 +115,76 @@ def test_remove_works_with_multiple_pages():
         t.remove(v)
         eq_(t.length(), 10)
         ok_(v not in t.all())
+
+
+def test_remove_works_with_embedded_documents():
+    t = TestArray('remove_embedded_docs')
+    with DBTest:
+        for i in xrange(5):
+            t.append({'i': i, 'k': i})
+        eq_(t.length(), 5)
+        t.remove({'i': 3})
+        eq_(t.length(), 4)
+
+
+def test_remove_works_with_complex_embedded_documents_and_dot_notation():
+    t = TestArray('remove_complex_embedded_docs')
+    with DBTest:
+        for i in xrange(5):
+            t.append({'foo': 'bar', 'fnord': {'i': i, 'spam': 'eggs'}})
+        eq_(t.length(), 5)
+        ok_(t.remove({'fnord.i': 3}))
+        eq_(t.length(), 4)
+
+
+def test_multiple_removes_maintains_correct_count_with_dupes_on_diff_pages():
+    t = TestArray('remove_count')
+    with DBTest:
+        t.append({'i': 9})
+        for i in xrange(3):
+            t.append({'i': i})
+        t.append({'i': 9})
+        t.remove({'i': 9})
+        pages = list(TestArray.find({'_id': t._id_regex}))
+        for page in pages:
+            eq_(page.size, len(page.entries))
+
+
+def test_multiple_removes_maintains_correct_count_with_dupes_on_same_page():
+    t = TestArray('remove_count_dupes')
+    with DBTest:
+        for i in xrange(3):
+            t.append({'i': i})
+        t.append({'i': 9})
+        t.append({'i': 9})
+        eq_(t.length(), 5)
+        t.remove({'i': 9})
+        eq_(t.length(), 4)
+        pages = list(TestArray.find({'_id': t._id_regex}))
+        for page in pages:
+            eq_(page.size, len(page.entries))
+        t.remove({'i': 9})
+        eq_(t.length(), 3)
+        pages = list(TestArray.find({'_id': t._id_regex}))
+        for page in pages:
+            eq_(page.size, len(page.entries))
+        t.remove({'i': 9})
+        eq_(t.length(), 3)
+
+
+def test_remove_one_more_time_just_for_kicks():
+    t = TestArray('never_stop_testing_remove')
+    with DBTest:
+        for i in xrange(10):
+            t.append(i)
+        eq_(t[:], [0, 1, 2, 3, 4, 5, 6, 7, 8, 9])
+        eq_(t.length(), 10)
+        t.remove(2)
+        eq_(t[0:], [0, 1, 3, 4, 5, 6, 7, 8, 9])
+        eq_(t.length(), 9)
+        t.remove(9)
+        eq_(t[:3], [0, 1, 3, 4, 5, 6, 7, 8])
+        eq_(t.length(), 8)
 
 
 @raises(TypeError)
@@ -131,7 +204,7 @@ def test_append_fails_if_page_is_missing():
     t = TestArray('append_fails_with_missing_page', 0)
     with DBTest:
         t.append(1)
-        t._page.remove({t._page.array_id: t.array_id})
+        t._page.remove({t._page._id: t._id_regex})
         t.append(1)
 
 
@@ -217,3 +290,62 @@ def test_getitem_raises_indexerror_for_out_of_range():
         ok_(t[2])
         ok_(t[3])
         t[4]
+
+
+def test_find_gives_us_a_working_find():
+    t = TestArray('find', 0)
+    with DBTest:
+        eq_(list(TestArray.find({'_id': t._id_regex})), [])
+
+
+def test_entries_returns_key_on_class():
+    t = TestArray('entries', 0)
+    with DBTest:
+        eq_(TestArray.entries, t._page.entries)
+        eq_(TestArray.entries, TestArray._page.entries)
+        eq_(TestArray.entries, 'e')
+
+
+def test_size_returns_key_on_class():
+    t = TestArray('size', 0)
+    with DBTest:
+        eq_(TestArray.size, t._page.size)
+        eq_(TestArray.size, TestArray._page.size)
+        eq_(TestArray.size, 's')
+
+
+def test_unset_page_count_queries_for_the_page_count():
+    t = TestArray('unset_page_count', 0)
+    with DBTest:
+        for i in xrange(6):
+            t.append(i)
+        t2 = TestArray('unset_page_count')
+        t2.append(7)
+        eq_(t.pages(), t2.page_count)
+        eq_(t2.page_count, 3)
+        eq_(t[2], [7])
+
+
+def test_all_returns_unmapped_entries():
+    t = TestArray('all_unmapped')
+    with DBTest:
+        for i in xrange(3):
+            t.append({str(i): i})
+        for o in t.all():
+            eq_(type(o), dict)
+
+
+def test_iteration():
+    t = TestArray('iteration')
+    with DBTest:
+        l = set(xrange(15))
+        for i in l:
+            t.append(i)
+        for page in t:
+            if not page:
+                break
+            eq_(len(page), 3)
+            for e in page:
+                l.remove(e)
+        eq_(l, set())
+

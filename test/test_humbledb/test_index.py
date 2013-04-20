@@ -3,11 +3,18 @@ import mock
 
 import humbledb
 from ..util import *
-from humbledb import Document, Embed, Index
+from humbledb import Document, Embed, Index, _version
 
 
 def teardown():
     DBTest.connection.drop_database(database_name())
+
+
+def cache_for(val):
+    # This is a work around for the version changing the cache argument
+    if _version._lt('2.3'):
+        return {'ttl': val}
+    return {'cache_for': val}
 
 
 class DocTest(Document):
@@ -33,7 +40,7 @@ def test_index_basic():
             coll.ensure_index.assert_called_with(
                     Test.user_name,
                     background=True,
-                    cache_for=60*60*24)
+                    **cache_for(60*60*24))
 
 
 def test_index_basic_sparse():
@@ -52,8 +59,8 @@ def test_index_basic_sparse():
             coll.ensure_index.assert_called_with(
                     Test.user_name,
                     background=True,
-                    cache_for=60*60*24,
-                    sparse=True)
+                    sparse=True,
+                    **cache_for(60*60*24))
 
 
 def test_index_basic_directional():
@@ -72,7 +79,7 @@ def test_index_basic_directional():
             coll.ensure_index.assert_called_with(
                     [(Test.user_name, humbledb.DESC)],
                     background=True,
-                    cache_for=60*60*24)
+                    **cache_for(60*60*24))
 
 
 def test_index_override_defaults():
@@ -91,7 +98,7 @@ def test_index_override_defaults():
             coll.ensure_index.assert_called_with(
                     Test.user_name,
                     background=False,
-                    cache_for=60)
+                    **cache_for(60))
 
 
 def test_resolve_dotted_index():
@@ -140,7 +147,7 @@ def test_resolve_compound_index():
                     [(Test.user_name, humbledb.ASC), (Test.compound,
                         humbledb.DESC)],
                     background=True,
-                    cache_for=60*60*24)
+                    **cache_for(60*60*24))
 
 
 @raises(TypeError)

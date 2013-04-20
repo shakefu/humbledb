@@ -8,6 +8,7 @@ import pyconfig
 from pytool.lang import classproperty, UNSET
 
 from humbledb import _version
+from humbledb.errors import NestedConnection
 
 
 __all__ = [
@@ -86,7 +87,7 @@ class MongoMeta(type):
             carefully!
         """
         if cls in Mongo.contexts:
-            raise RuntimeError("Do not nest a connection within itself, it "
+            raise NestedConnection("Do not nest a connection within itself, it "
                     "may cause undefined behavior.")
         if pyconfig.get('humbledb.allow_explicit_request', True):
             cls.connection.start_request()
@@ -153,44 +154,43 @@ class Mongo(object):
 
     config_host = 'localhost'
     """ The host name or address to connect to. """
+
     config_port = 27017
     """ The port to connect to. """
+
     config_replica = None
     """ If you're connecting to a replica set, this holds its name. """
+
     config_connection_cls = UNSET
     """ This defines the connection class to use. HumbleDB will try to
     intelligently choose a class based on your replica settings and PyMongo
     version. """
+
     config_max_pool_size = pyconfig.setting('humbledb.connection_pool', 10)
     """ This specifies the max_pool_size of the connection. """
+
     config_auto_start_request = pyconfig.setting('humbledb.auto_start_request',
             True)
     """ This specifies the auto_start_request option to the connection. """
+
     config_use_greenlets = pyconfig.setting('humbledb.use_greenlets', False)
     """ This specifies the use_greenlets option to the connection. """
+
     config_tz_aware = pyconfig.setting('humbledb.tz_aware', True)
     """ This specifies the tz_aware option to the connection. """
+
+    config_write_concern = pyconfig.setting('humbledb.write_concern', 1)
+    """ This specifies the write concern (``w=``) for this connection. This was
+        added so that Pymongo before 2.4 will by default use
+        ``getLastError()``.
+
+        .. versionadded: 4.0
+
+    """
 
     def __new__(cls):
         """ This class cannot be instantiated. """
         return cls
-
-    @classmethod
-    def _new_replica_connection(cls):
-        """ Return a new connection to this class' replica set. """
-        logging.getLogger(__name__).info("Creating new MongoDB connection to "
-                "'{}:{}' replica: {}".format(cls.config_host, cls.config_port,
-                    cls.config_replica))
-
-        return pymongo.ReplicaSetConnection(
-                host=cls.config_host,
-                port=cls.config_port,
-                max_pool_size=cls.config_max_pool_size,
-                auto_start_request=cls.config_auto_start_request,
-                use_greenlets=cls.config_use_greenlets,
-                tz_aware=cls.config_tz_aware,
-                replicaSet=cls.config_replica,
-                )
 
     @classmethod
     def _new_connection(cls):
@@ -202,6 +202,7 @@ class Mongo(object):
                 'auto_start_request': cls.config_auto_start_request,
                 'use_greenlets': cls.config_use_greenlets,
                 'tz_aware': cls.config_tz_aware,
+                'w': cls.config_write_concern,
                 }
         if cls.config_replica:
             kwargs['replicaSet'] = cls.config_replica

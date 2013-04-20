@@ -38,6 +38,18 @@ class NameMap(unicode):
         """ Merges another `.NameMap` instance into this one. """
         self.__dict__.update(other.filtered())
 
+    def empty(self):
+        """
+        Return ``True`` if this name map does not contain any sub keys,
+        otherwise ``False``.
+
+        .. versionadded: 4.0
+
+        """
+        if len(self.__dict__) == 1 and self.__dict__.keys() == ['_key']:
+            return True
+        return False
+
 
 class DictMap(DictProxy):
     """ This class is used to map embedded documents to their attribute names.
@@ -78,14 +90,18 @@ class DictMap(DictProxy):
         # Return the value if we have it
         if key in self:
             value = self[key]
-            if isinstance(value, dict):
+            # Only create a new DictMap instance if we map into it
+            if isinstance(value, dict) and not attr.empty():
                 value = DictMap(value, attr, self, key, reverse_name_map)
+            # We always create a new ListMap instance for the .new() method
             elif isinstance(value, list):
                 value = ListMap(value, attr, self, key, reverse_name_map)
             return value
 
-        if isinstance(attr, NameMap):
+        if isinstance(attr, NameMap) and not attr.empty():
             return DictMap({}, attr, self, key, reverse_name_map)
+        else:
+            return {}
 
         # TODO: Decide whether to allow non-mapped keys via attribute access
         object.__getattribute__(self, name)
@@ -191,15 +207,18 @@ class ListMap(ListProxy):
         value = {}
         # Append it to ourselves
         self.append(value)
-        # Return it wrapped in a DictMap
-        # We pass None as the 'key' so that an IndexError would be raised if
-        # the dict map tries to modify the parent
-        return DictMap(value, self._name_map, self, None,
-                self._reverse_name_map)
+        # Wrap it in a DictMap if we map into this list
+        if not self._name_map.empty():
+            # We pass None as the 'key' so that an IndexError would be raised if
+            # the dict map tries to modify the parent
+            value = DictMap(value, self._name_map, self, None,
+                    self._reverse_name_map)
+        return value
 
     def __getitem__(self, index):
         value = super(ListMap, self).__getitem__(index)
-        if isinstance(value, dict):
+        # Only create a new DictMap if we actually map into this list
+        if isinstance(value, dict) and not self._name_map.empty():
             value = DictMap(value, self._name_map, self, None,
                     self._reverse_name_map)
         return value

@@ -49,10 +49,7 @@ This section contains all the changes that I can remember, by version.
 3.3.1
 -----
 
-- Now depends on Pytool >= 3.0.1. This may break your installation since Pytool
-  3.0.1 depends on Simplejson 3.2.0, which is not yet released as of this
-  writing. If you need Simplejson 3.2.0, you can build it from
-  `http://github.com/shakefu/simplejson`_.
+- Now depends on Pytool >= 3.0.1.
 
 3.3.0
 -----

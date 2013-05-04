@@ -6,6 +6,9 @@ convenient and easy to use interface. It enforces strict explictness when a
 connection to a MongoDB cluster or replica set is being used, by disallowing
 any read or write interaction outside of a context manager's context block.
 
+.. rubric:: Build status
+.. image:: https://api.travis-ci.org/shakefu/humbledb.png
+
 Quick Example
 -------------
 

@@ -6,6 +6,13 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+4.0.1
+-----
+
+.. currentmodule:: humbledb
+
+- Fix bug with :meth:`array.Array.remove` in sharded environments.
+
 4.0.0
 -----
 

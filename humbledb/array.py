@@ -161,7 +161,10 @@ class Array(object):
 
     def remove(self, spec):
         """
-        Remove the first element matching `spec` from this array.
+        Remove first element matching `spec` from each page in this array.
+
+        Due to how this is handled, all ``null`` values will be removed from
+        the array.
 
         :param dict spec: Dictionary matching items to be removed
         :returns: ``True`` if an element was removed
@@ -174,13 +177,17 @@ class Array(object):
             query_spec = {'$elemMatch': spec}
         else:
             query_spec = spec
+        # Update to set first instance matching ``spec`` on each page to
+        # ``null`` (via $unset)
         query = {'_id': self._id_regex, Page.entries: query_spec}
         modify = {'$unset': {Page.entries+'.$': spec}, '$inc': {Page.size: -1}}
-        fields = {'_id': 1}
-        doc = Page.find_and_modify(query, modify, fields=fields, sort=fields)
-        if not doc:
+        result = Page.update(query, modify, multi=True)
+        if not result or not result.get('updatedExisting', None):
             return
-        result = Page.update(doc, {'$pull': {Page.entries: None}})
+        # Update to remove all ``null`` entries from this array
+        query = {'_id': self._id_regex, Page.entries: None}
+        result = Page.update(query, {'$pull': {Page.entries: None}},
+                multi=True)
         # Check the result and return True if anything was modified
         if result and result.get('updatedExisting', None):
             return True

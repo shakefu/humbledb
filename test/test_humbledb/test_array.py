@@ -1,5 +1,4 @@
 import random
-from unittest.case import SkipTest
 
 from test.util import *
 from humbledb.array import Array
@@ -185,6 +184,42 @@ def test_remove_one_more_time_just_for_kicks():
         t.remove(9)
         eq_(t[:3], [0, 1, 3, 4, 5, 6, 7, 8])
         eq_(t.length(), 8)
+
+
+def test_sharded_remove_works():
+    t = TestArray('test_sharded_remove')
+    if not enable_sharding(TestArray._page.config_collection, {'_id': 1}):
+        raise SkipTest
+    with DBTest:
+        for word in "The quick brown fox jumps over the lazy dog.".split():
+            t.append(word)
+        eq_(t.length(), 9)
+        eq_(t.pages(), 4)
+        eq_(t[3], [])
+        t.remove('lazy')
+        eq_(t.length(), 8)
+        eq_(t[2], ['the', 'dog.'])
+        t.remove('fox')
+        eq_(t.length(), 7)
+        eq_(t[1], ['jumps', 'over'])
+
+
+def test_sharded_remove_works_with_embedded_documents():
+    t = TestArray('test_sharded_remove_embedded')
+    if not enable_sharding(TestArray._page.config_collection, {'_id': 1}):
+        raise SkipTest
+    with DBTest:
+        for word in "The quick brown fox jumps over the lazy dog.".split():
+            t.append({'word': word})
+        eq_(t.length(), 9)
+        eq_(t.pages(), 4)
+        eq_(t[3], [])
+        t.remove({'word': 'lazy'})
+        eq_(t.length(), 8)
+        eq_(t[2], [{'word': 'the'}, {'word': 'dog.'}])
+        t.remove({'word': 'fox'})
+        eq_(t.length(), 7)
+        eq_(t[1], [{'word': 'jumps'}, {'word': 'over'}])
 
 
 @raises(TypeError)

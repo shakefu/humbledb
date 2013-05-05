@@ -23,7 +23,7 @@ explanation.
 Installation
 ============
 
-HumbleDB requires Pymongo_ (``>=2.0.1``), Pytool_ (``>=1.1.0``) and
+HumbleDB requires Pymongo_ (``>=2.0.1``), Pytool_ (``>=3.0.1``) and
 Pyconfig_. These are installed for you automatically when you install HumbleDB
 via pip or easy_install.
 

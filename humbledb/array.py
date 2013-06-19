@@ -8,7 +8,9 @@ from humbledb.errors import NoConnection
 class Page(Document):
     """ Document class used by :class:`Array`. """
     size = 's'   # Number of entries in this page
+    """ Number of entries currently in this page. """
     entries = 'e'  # Array of entries
+    """ Array of entries. """
 
 
 class ArrayMeta(type):

@@ -816,7 +816,94 @@ certain webpage, or offer signups.
 In cases where the event data is sparse, diverse, or has many parameters, other
 aggregation approaches may work better. 
 
+:note: Due to time constraints, the documentation on reports is incomplete.
+       Please see the :doc:`api` for more information. If you
+       have questions or issues, please contact me via `github issues
+       <http://github.com/shakefu/humbledb/issues>`_.
+
 .. rubric:: Example: 
 
-COMING SOON
+::
+
+   from humbledb.report import DailyReport 
+
+   class DailyPageHits(DailyReport):
+       config_database = 'reports'
+       config_collection = 'page_hits'
+       config_resolution = MINUTE
+
+   url_path = '/about'
+   DailyPageHits().record(url_path)
+
+
+.. _arrays:
+
+Paginated Arrays
+================
+
+One of the limitations of HumbleDB is the performance of very large arrays
+within documents, particulary arrays which have indexing on keys within
+embedded documents for that array.
+
+There are two issues which arise; first, that each append to the array increases
+the array size, which leads to document moves, decreasing the efficiency of the
+database, and second, that with each move of a very large array, the indexing
+on the whole array must be updated, which can be very slow for arrays over
+10,000 elements.
+
+The :class:`humbledb.array.Array` class addresses both of these situations by
+first allowing for transparent preallocation of the array document to ensure
+that only a minimal number of document moves happen, and second, by
+transparently paginating the arrays into multiple documents, to limit the
+maximum array size for any single document.
+
+:note: Due to time constrants, the documentation on arrays is incomplete. I
+       hope to fix this as soon as possible.
+
+.. rubric:: Example:
+
+::
+
+   from humbledb import Mongo
+   from humbledb.array import Array
+
+   class Comments(Array):
+       config_database = 'humble'
+       config_collection = 'comments'
+       config_padding = 10000  # Number of bytes to pad with
+       config_max_size = 100  # Number of entries per page
+
+   with Mongo:
+       post = BlogPost.find_one(...)  # This is the post associated with
+                                      # comments for this example
+
+   comments = Comments(post._id)  # The argument is used to construct the array
+                                  # id, which uniquely identifies pages in this
+                                  # array. This can be any unique string value
+
+   with Mongo:
+       # Appending adds to the Array, creating a new page if necessary, and
+       # paginating when an array is too large.
+       # The current number of pages is returned
+       page_count = comments.append({
+               'user_name': "example_user",
+               'comment': "I really like arrays.",
+               'timestamp': datetime.now(),
+               })
+       
+       comments.pages()  # Return the current number of pages
+
+       comments.length()  # Return the current number of entries
+
+       entries = comments.all()  # Return all the entries as a list
+
+       first_page = comments[0]  # Return a given page of entries as a list
+       pages = comments[0:2]  # Slices work, but negative indexes *do not*
+
+       spec = {'user_name': "example_user"}
+       comments.remove(spec)  # Remove all entries matching `spec`
+
+       comments.clear()  # Remove all entries
+
+
 

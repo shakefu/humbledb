@@ -85,3 +85,13 @@ Resolutions
 .. autoattribute:: humbledb.report.HOUR
 .. autoattribute:: humbledb.report.MINUTE
 
+
+Arrays
+======
+
+.. autoclass:: humbledb.array.Array
+   :members:
+
+.. autoclass:: humbledb.array.Page
+   :members:
+

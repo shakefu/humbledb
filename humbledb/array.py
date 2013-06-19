@@ -71,7 +71,7 @@ class Array(object):
     """
     __metaclass__ = ArrayMeta
 
-    config_max_size = 500
+    config_max_size = 100
     """ Soft limit on the maximum number of entries per page. """
 
     config_page_marker = u'#'

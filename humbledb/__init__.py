@@ -18,7 +18,7 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-__version__ = '4.0.1'
+__version__ = '5.0.0-dev'
 
 
 # We only want to allow * imports for the most common classes. If you want
@@ -52,6 +52,8 @@ from . import report
 # Exceptions module
 from . import errors
 
-# Make pyflakes happy
+# To make Pyflakes happy
 array = array
 report = report
+errors = errors
+UNSET = UNSET

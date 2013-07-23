@@ -188,6 +188,31 @@ def test_for_json():
     eq_(DocTest({'u': 'test_name'}).for_json(), {'user_name': 'test_name'})
 
 
+def test_for_json_list():
+    eq_(DocTest({'u': ["foo", ["bar"]]}).for_json(), {'user_name': ["foo",
+        ["bar"]]})
+
+
+def test_for_json_embedded_list():
+    eq_(EmbedTestDoc({'e': [{'e': [{'a': 1}]}]}).for_json(), {'embed':
+        [{'embed': [{'attr': 1}]}]})
+
+
+def test_non_mapped_attribute_assignment_works_fine():
+    d = DocTest()
+    d.foo = "bar"
+    eq_(d.foo, "bar")
+
+
+@raises(AttributeError)
+def test_non_mapped_attribute_deletion_works():
+    d = DocTest()
+    d.foo = "bar"
+    eq_(d.foo, "bar")
+    del d.foo
+    d.foo
+
+
 def test_nonstring():
     _instance = object()
 
@@ -606,4 +631,23 @@ def test_name_attribute():
 
     Test.name
 
+
+@raises(TypeError)
+def test_config_indexes_must_be_a_list():
+    class Test(Document):
+        config_database = database_name()
+        config_collection = 'test'
+        config_indexes = 'foo'
+
+
+def test_exercise_normal_index():
+    class Test(Document):
+        config_database = database_name()
+        config_collection = 'potato'
+        config_indexes = ['user_name']
+
+        user_name = 'u'
+
+    with DBTest:
+        Test.find_one()
 

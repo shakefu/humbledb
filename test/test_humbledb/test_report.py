@@ -1,113 +1,461 @@
+import calendar
+import datetime
+
 import pytool
+from nose.tools import raises
 
 from ..util import *
-from humbledb.report import (DailyReport, WeeklyReport, MonthlyReport,
-        ReportBase)
+from humbledb import report
+from humbledb.report import (Report, YEAR, MONTH, DAY, HOUR, MINUTE)
+
+
+class Yearly(Report):
+    config_database = database_name()
+    config_collection = 'report.year'
+    config_period = YEAR
+    config_intervals = [YEAR, DAY]
+
+
+class Monthly(Report):
+    config_database = database_name()
+    config_collection = 'report.month'
+    config_period = MONTH
+    config_intervals = [MONTH, HOUR]
+
+
+class Daily(Report):
+    config_database = database_name()
+    config_collection = 'report.day'
+    config_period = DAY
+    config_intervals = [DAY, MINUTE]
+
+
+class Full(Report):
+    config_database = database_name()
+    config_collection = 'report.day'
+    config_period = YEAR
+    config_intervals = [YEAR, MINUTE]
+
+
+class ByHour(Report):
+    config_database = database_name()
+    config_collection = 'report.by_hour'
+    config_period = DAY
+    config_intervals = [DAY, HOUR]
 
 
 def teardown():
     DBTest.connection.drop_database(database_name())
 
 
-@raises(NotImplementedError)
-def test_bad_subclass_raises_error():
-    class BadReport(ReportBase):
-        def get_id(self, event):
-            return None
+def test_update_clause_creates_dot_notated_clause():
+    stamp = datetime.datetime(2013, 1, 5, 7, 9, 0, tzinfo=pytool.time.UTC())
 
-    BadReport().record('test')
+    eq_(Yearly._update_clause(YEAR, stamp), {Yearly.year: 1})
+    eq_(Yearly._update_clause(MONTH, stamp), {Yearly.month + '.0': 1})
+    eq_(Yearly._update_clause(DAY, stamp), {Yearly.day + '.0.4': 1})
+    eq_(Yearly._update_clause(HOUR, stamp), {Yearly.hour + '.0.4.7': 1})
+    eq_(Yearly._update_clause(MINUTE, stamp), {Yearly.minute + '.0.4.7.9': 1})
 
+    eq_(Monthly._update_clause(YEAR, stamp), {Monthly.year: 1})
+    eq_(Monthly._update_clause(MONTH, stamp), {Monthly.month: 1})
+    eq_(Monthly._update_clause(DAY, stamp), {Monthly.day + '.4': 1})
+    eq_(Monthly._update_clause(HOUR, stamp), {Monthly.hour + '.4.7': 1})
+    eq_(Monthly._update_clause(MINUTE, stamp), {Monthly.minute + '.4.7.9': 1})
 
-@raises(NotImplementedError)
-def test_other_bad_subclass_raises_error():
-    class BadReport(ReportBase):
-        def floor_date(self, stamp):
-            return None
-
-    BadReport().record('test')
-
-
-@raises(NotImplementedError)
-def test_other_bad_subclass_raises_error():
-    class BadReport(ReportBase):
-        def get_id(self, event):
-            return ''
-
-        def floor_date(self, stamp):
-            import pytool
-            return pytool.time.floor_day()
-
-    BadReport().record('test')
+    eq_(Daily._update_clause(YEAR, stamp), {Daily.year: 1})
+    eq_(Daily._update_clause(MONTH, stamp), {Daily.month: 1})
+    eq_(Daily._update_clause(DAY, stamp), {Daily.day: 1})
+    eq_(Daily._update_clause(HOUR, stamp), {Daily.hour + '.7': 1})
+    eq_(Daily._update_clause(MINUTE, stamp), {Daily.minute + '.7.9': 1})
 
 
-class DailyReportTest(DailyReport):
-    config_database = database_name()
-    config_collection = 'report.day'
-
-
-class WeeklyReportTest(WeeklyReport):
-    config_database = database_name()
-    config_collection = 'report.week'
-
-
-class MonthlyReportTest(MonthlyReport):
-    config_database = database_name()
-    config_collection = 'report.month'
-
-
-@raises(RuntimeError)
-def test_daily_report_record_requires_mongo_context():
-    DailyReportTest().record('test')
-
-
-@raises(RuntimeError)
-def test_weekly_report_record_requires_mongo_context():
-    WeeklyReportTest().record('test')
-
-
-@raises(RuntimeError)
-def test_monthly_report_record_requires_mongo_context():
-    MonthlyReportTest().record('test')
-
-
-def test_daily_report_upserts_document():
-    with DBTest:
-        DailyReportTest.remove(safe=True)
-        eq_(DailyReportTest.find().count(), 0)
-
-        # We have to use safe writes here to ensure consistency when using a
-        # sharded test environment
-        DailyReportTest().record('test', safe=True)
-        eq_(DailyReportTest.find().count(), 1)
-
-
-def test_weekly_report_upserts_document():
-    with DBTest:
-        WeeklyReportTest.remove(safe=True)
-        eq_(WeeklyReportTest.find().count(), 0)
-
-        # We have to use safe writes here to ensure consistency when using a
-        # sharded test environment
-        WeeklyReportTest().record('test', safe=True)
-        eq_(WeeklyReportTest.find().count(), 1)
-
-
-def test_monthly_report_upserts_document():
-    with DBTest:
-        MonthlyReportTest.remove(safe=True)
-        eq_(MonthlyReportTest.find().count(), 0)
-
-        # We have to use safe writes here to ensure consistency when using a
-        # sharded test environment
-        MonthlyReportTest().record('test', safe=True)
-        eq_(MonthlyReportTest.find().count(), 1)
-
-
-def test_daily_report_has_correct_metadata():
+def test_record_event_yearly():
+    event = 'yearly_record_event'
     now = pytool.time.utcnow()
     with DBTest:
-        DailyReportTest().record('test2', stamp=now, safe=True)
+        Yearly.record(event, now)
+        doc = Yearly.find_one()
 
-        r = DailyReportTest.find_one({DailyReportTest.meta.event: 'test2'})
-        eq_(r.meta.event, 'test2')
-        eq_(r.meta.date, pytool.time.floor_day(now))
+    eq_(doc.meta.event, event)
+    eq_(doc.meta.period, Yearly._period(now))
+
+    eq_(len(doc.day), 12)
+    for month in doc.day:
+        ok_(len(month) >= 28)
+
+    eq_(doc.year, 1)
+    eq_(doc.day[now.month-1][now.day-1], 1)
+
+    with DBTest:
+        Yearly.record(event, now)
+        doc = Yearly.find_one()
+
+    eq_(doc.year, 2)
+    eq_(doc.day[now.month-1][now.day-1], 2)
+
+
+def test_record_event_monthly():
+    event = 'monthly_record_event'
+    now = pytool.time.utcnow()
+    with DBTest:
+        Monthly.record(event, now)
+        doc = Monthly.find_one()
+
+    eq_(doc.meta.event, event)
+    eq_(doc.meta.period, Monthly._period(now))
+
+    ok_(len(doc.hour) >= 28)
+    for day in doc.hour:
+        eq_(len(day), 24)
+
+    eq_(doc.month, 1)
+    eq_(doc.hour[now.day-1][now.hour], 1)
+
+    with DBTest:
+        Monthly.record(event, now)
+        doc = Monthly.find_one()
+
+    eq_(doc.month, 2)
+    eq_(doc.hour[now.day-1][now.hour], 2)
+
+
+def test_record_event_daily():
+    event = 'daily_record_event'
+    now = pytool.time.utcnow()
+    with DBTest:
+        Daily.record(event, now)
+        doc = Daily.find_one()
+
+    eq_(doc.meta.event, event)
+    eq_(doc.meta.period, Daily._period(now))
+
+    eq_(len(doc.minute), 24)
+    for minute in doc.minute:
+        eq_(len(minute), 60)
+
+    eq_(doc.day, 1)
+    eq_(doc.minute[now.hour][now.minute], 1)
+
+    with DBTest:
+        Daily.record(event, now)
+        doc = Daily.find_one()
+
+    eq_(doc.day, 2)
+    eq_(doc.minute[now.hour][now.minute], 2)
+
+
+def test_preallocate_future():
+    class PreallocAlways(Report):
+        config_database = database_name()
+        config_collection = 'prealloc'
+        config_period = MONTH
+        config_intervals = [MONTH, HOUR]
+        config_preallocation = 1
+
+    event = 'prealloc_future'
+    now = pytool.time.utcnow()
+
+    with DBTest:
+        PreallocAlways.record(event, now)
+        eq_(PreallocAlways.find().count(), 2)
+
+        # Ensure we don't preallocate too many
+        PreallocAlways._preallocated[PreallocAlways._period(now)].remove(event)
+        PreallocAlways.record(event)
+        eq_(PreallocAlways.find().count(), 2)
+
+
+def test_report_query_by_hour():
+    now = pytool.time.utcnow()
+    event = 'event_test_report_query_by_hour'
+    with DBTest:
+        ByHour.record(event, now)
+        ByHour.record(event, now - datetime.timedelta(seconds=60*60))
+        counts = ByHour.hourly(event)[-3:]
+
+    eq_(counts, [0, 1, 1])
+
+
+def test_report_query_by_hour_across_edge():
+    stamp = datetime.datetime(2013, 1, 1, tzinfo=pytool.time.UTC())
+    stamp2 = stamp - datetime.timedelta(seconds=60*60)
+    event = 'event_test_report_query_by_hour_edge'
+    with DBTest:
+        ByHour.record(event, stamp)
+        ByHour.record(event, stamp2)
+        stamp += datetime.timedelta(seconds=60*60+1)
+        stamp2 -= datetime.timedelta(seconds=60*60)
+        counts = ByHour.hourly(event)[stamp2:stamp]
+
+    eq_(counts, [0, 1, 1, 0])
+    eq_([c.year for c in counts], [2012, 2012, 2013, 2013])
+    eq_([c.month for c in counts], [12, 12, 1, 1])
+    eq_([c.hour for c in counts], [22, 23, 0, 1])
+    eq_([c.minute for c in counts], [0] * 4)
+
+
+@raises(ValueError)
+def test_resolution_error():
+    ByHour.per_minute
+
+
+@raises(TypeError)
+def test_index_error():
+    ByHour.hourly[-1]
+
+
+@raises(TypeError)
+def test_extended_slice_error():
+    ByHour.hourly[2:3:4]
+
+
+def test_report_query_monthly_by_yearly():
+    stamp = pytool.time.utcnow()
+    stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
+    hour = datetime.timedelta(seconds=60*60)
+    event = 'event_report_query_monthly_by_yearly'
+    with DBTest:
+        Monthly.record(event, stamp)
+        Monthly.record(event, stamp + hour)
+        Monthly.record(event, stamp + hour + hour)
+
+        counts = Monthly.yearly(event)[-1:]
+        eq_(counts, [3])
+        count = counts[0]
+        eq_(count.timestamp.timetuple()[:1], stamp.timetuple()[:1])
+        eq_(count.month, 1)
+        eq_(count.day, 1)
+        eq_(count.hour, 0)
+
+
+def test_report_query_monthly_by_monthly():
+    stamp = pytool.time.utcnow()
+    stamp = report._relative_period(report.MONTH, stamp, -1)
+    stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
+    hour = datetime.timedelta(seconds=60*60)
+    event = 'event_report_query_monthly_by_monthly'
+    with DBTest:
+        Monthly.record(event, stamp)
+        Monthly.record(event, stamp + hour)
+        Monthly.record(event, stamp + hour + hour)
+
+        counts = Monthly.monthly(event)[-2:-1]
+        eq_(counts, [3])
+        count = counts[0]
+        eq_(count.timestamp.timetuple()[:2], stamp.timetuple()[:2])
+        eq_(count.day, 1)
+        eq_(count.hour, 0)
+
+
+def test_report_query_monthly_by_daily():
+    stamp = pytool.time.utcnow()
+    stamp -= datetime.timedelta(days=1)
+    stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
+    hour = datetime.timedelta(seconds=60*60)
+    event = 'event_report_query_monthly_by_daily'
+    with DBTest:
+        Monthly.record(event, stamp)
+        Monthly.record(event, stamp + hour)
+        Monthly.record(event, stamp + hour + hour)
+
+        counts = Monthly.daily(event)[-2:-1]
+        eq_(counts, [3])
+        count = counts[0]
+        eq_(count.timestamp.timetuple()[:3], stamp.timetuple()[:3])
+        eq_(count.hour, 0)
+
+
+def test_report_query_monthly_by_hourly():
+    stamp = pytool.time.utcnow()
+    stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
+    hour = datetime.timedelta(seconds=60*60)
+    event = 'event_report_query_monthly_by_hourly'
+    with DBTest:
+        Monthly.record(event, stamp)
+        Monthly.record(event, stamp + hour)
+        Monthly.record(event, stamp + hour + hour)
+
+        counts = Monthly.hourly(event)[stamp - hour:stamp + hour * 4]
+        eq_(counts, [0, 1, 1, 1, 0])
+        for count in counts:
+            eq_(count.year, stamp.year)
+            eq_(count.month, stamp.month)
+            eq_(count.day, stamp.day)
+            eq_(count.minute, 0)
+
+        eq_([c.hour for c in counts], [0, 1, 2, 3, 4])
+
+
+def test_report_query_yearly_by_monthly():
+    stamp = pytool.time.utcnow()
+    stamp = report._relative_period(YEAR, stamp, -1)
+    stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
+    hour = datetime.timedelta(seconds=60*60)
+    event = 'event_report_query_yearly_by_monthly'
+    with DBTest:
+        Yearly.record(event, stamp)
+        Yearly.record(event, stamp + hour)
+        Yearly.record(event, stamp + hour + hour)
+
+        counts = Yearly.monthly(event)[stamp - hour:stamp + hour]
+        eq_(counts, [3])
+        count = counts[0]
+        eq_(count.timestamp.timetuple()[:2], stamp.timetuple()[:2])
+        eq_(count.day, 1)
+        eq_(count.hour, 0)
+
+
+def test_report_query_regex():
+    stamp = pytool.time.utcnow()
+    stamp -= datetime.timedelta(days=1)
+    stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
+    hour = datetime.timedelta(seconds=60*60)
+    with DBTest:
+        Monthly.record('regex_test1', stamp)
+        Monthly.record('regex_test2', stamp + hour)
+        counts = Monthly.daily('regex_test', regex=True)[-2:-1]
+        eq_(len(counts), 2)
+        eq_(counts['regex_test1'], [1])
+        eq_(counts['regex_test1'], [1])
+
+
+def test_report_query_end_index():
+    stamp = pytool.time.utcnow()
+    stamp = datetime.datetime(stamp.year, 12, 31, 23, 59, 59,
+            tzinfo=pytool.time.UTC())
+
+    event = 'event_report_query_end_index'
+    with DBTest:
+        Daily.record(event, stamp)
+        eq_(Daily.yearly(event)[2013:2014][-1], 1)
+        eq_(Daily.monthly(event)[1:13][-1], 1)
+
+    stamp = pytool.time.utcnow()
+    stamp = report._relative_period(MONTH, stamp, 1)
+    stamp -= datetime.timedelta(seconds=1)
+    with DBTest:
+        Daily.record(event, stamp)
+        _, end_of_month = calendar.monthrange(stamp.year, stamp.month)
+        eq_(Daily.daily(event)[1:end_of_month+1][-1], 1)
+
+    stamp = pytool.time.utcnow()
+    stamp = stamp.replace(hour=23, minute=59, second=59)
+    with DBTest:
+        Daily.record(event, stamp)
+        eq_(Daily.hourly(event)[0:24][-1], 1)
+
+    stamp = pytool.time.utcnow()
+    stamp = stamp.replace(minute=59, second=59)
+    with DBTest:
+        Daily.record(event, stamp)
+        eq_(Daily.per_minute(event)[0:60][-1], 1)
+
+
+def test_unspecified_start_year_index():
+    stamp = pytool.time.utcnow()
+    stamp = stamp.replace(year=2012)
+    event = 'event_unspecified_start_year_index'
+    with DBTest:
+        ByHour.record(event, stamp)
+        eq_(ByHour.yearly(event)[:-1][-1], 1)
+
+
+def test_no_results():
+    with DBTest:
+        eq_(ByHour.hourly('None')[-1:], [])
+
+
+@raises(IndexError)
+def test_year_index_out_of_range():
+    ByHour.yearly[:2038]
+
+
+@raises(IndexError)
+def test_year_index_out_of_range():
+    ByHour.yearly[1969:]
+
+
+@raises(IndexError)
+def test_month_index_out_of_range():
+    ByHour.monthly[:14]
+
+
+@raises(IndexError)
+def test_month_index_out_of_range2():
+    ByHour.monthly[0:]
+
+
+@raises(IndexError)
+def test_daily_index_out_of_range():
+    ByHour.daily[:33]
+
+
+@raises(IndexError)
+def test_daily_index_out_of_range2():
+    ByHour.daily[0:]
+
+
+@raises(IndexError)
+def test_hour_index_out_of_range():
+    ByHour.hourly[:25]
+
+
+@raises(IndexError)
+def test_minute_index_out_of_range():
+    Daily.per_minute[:61]
+
+
+@raises(TypeError)
+def test_bad_index_type():
+    Daily.per_minute['foo']
+
+
+@raises(TypeError)
+def test_bad_index_type():
+    Daily.per_minute['foo':]
+
+
+def test_report_count_addition_maintains_lesser_timestamp():
+    stamp = pytool.time.utcnow()
+    stamp2 = stamp + datetime.timedelta(seconds=1)
+    a = report.ReportCount(3, stamp)
+    b = report.ReportCount(5, stamp2)
+    c = a + b
+    eq_(c, 8)
+    eq_(c.timestamp, stamp)
+
+
+def test_report_count_works_with_integers():
+    stamp = pytool.time.utcnow()
+    a = report.ReportCount(3, stamp)
+    b = a + 2
+    eq_(b, 5)
+    eq_(b.timestamp, stamp)
+    c = b + 3
+    eq_(c, 8)
+    eq_(c.timestamp, stamp)
+    c += 5
+    eq_(c, 13)
+    eq_(c.timestamp, stamp)
+
+
+def test_report_query_coerces_date():
+    stamp = datetime.date.today()
+    hour = datetime.timedelta(seconds=60*60)
+
+    event = 'event_date_coercion'
+    with DBTest:
+        ByHour.record(event, pytool.time.floor_day() - hour)
+        eq_(ByHour.daily(event)[-2:stamp], [1])
+
+
+def test_relative_period_MONTH_across_end_of_year_and_beginning():
+    stamp = datetime.datetime(2013, 1, 1, tzinfo=pytool.time.UTC())
+    eq_(report._relative_period(MONTH, stamp, -1), datetime.datetime(2012, 12,
+        1, tzinfo=pytool.time.UTC()))
+
+    stamp = datetime.datetime(2013, 12, 1, tzinfo=pytool.time.UTC())
+    eq_(report._relative_period(MONTH, stamp, 1), datetime.datetime(2014, 1,
+        1, tzinfo=pytool.time.UTC()))
+

@@ -358,7 +358,7 @@ class Document(dict):
                     # Recursively map items in a dictionary
                     values[i] = mapper(value, submap)
                 elif isinstance(value, list):
-                    values[i] = map_list(value)
+                    values[i] = map_list(value, submap)
 
             return values
 
@@ -390,7 +390,8 @@ class Document(dict):
                 return DictMap({}, name_map, self, key, reverse_name_map)
             else:
                 # Return if a mapped attribute is missing
-                return None
+                # XXX: This should never happen
+                return None  # pragma: no cover
 
         # TODO: Decide whether to allow non-mapped keys via attribute access
         object.__getattribute__(self, name)
@@ -436,7 +437,9 @@ class Document(dict):
                         .format(index))
                 if isinstance(index, Index):
                     index.ensure(cls)
-                else:
+                else:  # pragma: no cover
+                    # This code is no longer reachable with the new Indexes,
+                    # but I don't want to remove it yet
                     caching_key = 'cache_for' if _version._gte('2.3') else 'ttl'
                     kwargs = {caching_key: (60 * 60 * 24)}
                     cls.collection.ensure_index(getattr(cls, index),

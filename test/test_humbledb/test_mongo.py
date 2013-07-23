@@ -1,5 +1,4 @@
 import mock
-import pymongo
 import pyconfig
 from unittest.case import SkipTest
 

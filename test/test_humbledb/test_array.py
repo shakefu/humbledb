@@ -1,8 +1,8 @@
 import random
 
 from test.util import *
+from humbledb import Document
 from humbledb.array import Array
-from humbledb import Document, UNSET
 
 
 class TestArray(Array):

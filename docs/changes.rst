@@ -6,6 +6,20 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.0.1
+-----
+
+- Fix a bug with summing report intervals where too many or too few values
+  could be returned, sometimes with the wrong timestamp.
+
+5.0.0
+-----
+
+- This release may break backwards compatibility.
+- Total rewrite of the :module:`humbledb.report` module to make it much more
+  useful. Sorry, but I'm fairly sure nobody was
+  using it before anyway.
+
 4.0.1
 -----
 

@@ -441,13 +441,13 @@ def test_report_count_works_with_integers():
 
 
 def test_report_query_coerces_date():
-    stamp = datetime.date.today()
+    stamp = pytool.time.utcnow()
     hour = datetime.timedelta(seconds=60*60)
 
     event = 'event_date_coercion'
     with DBTest:
-        ByHour.record(event, pytool.time.floor_day() - hour)
-        eq_(ByHour.daily(event)[-2:stamp], [1])
+        ByHour.record(event, pytool.time.floor_day(stamp) - hour)
+        eq_(ByHour.daily(event)[-2:-1], [1])
 
 
 def test_relative_period_MONTH_across_end_of_year_and_beginning():
@@ -458,4 +458,33 @@ def test_relative_period_MONTH_across_end_of_year_and_beginning():
     stamp = datetime.datetime(2013, 12, 1, tzinfo=pytool.time.UTC())
     eq_(report._relative_period(MONTH, stamp, 1), datetime.datetime(2014, 1,
         1, tzinfo=pytool.time.UTC()))
+
+
+def test_monthly_report_queried_daily_returns_correct_length():
+    class Sum(Report):
+        config_database = database_name()
+        config_collection = 'report.sum'
+        config_period = MONTH
+        config_intervals = [MONTH, HOUR]
+
+    now = pytool.time.utcnow()
+    earlier = report._relative_period(MONTH, now, -1)
+
+    event = 'monthly_as_daily'
+    with DBTest:
+        Sum.record(event)
+        Sum.record(event, earlier)
+        days = Sum.daily[-45:]
+
+    days = days.get(event, [])
+    # Check we get the right number of days
+    eq_(len(days), 45)
+    # Check we get the correct total
+    eq_(sum(days), 2)
+
+    # Ensure dates come back in correct order
+    date = report._relative_period(DAY, days[0].timestamp, -1)
+    for day in days:
+        ok_(day.timestamp > date)
+        date = day.timestamp
 

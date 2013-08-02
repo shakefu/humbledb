@@ -551,65 +551,90 @@ class ReportQuery(object):
         """
         Return a dictionary mapping event names to dicts of event counts.
 
-        The event counts should probably be a special int type which has the
-        timestamp stored.
+        The event counts are returned as :class:`ReportCount` which holds the
+        timestamp for the counts as well as the count itself.
+
+        :param results: Raw result list
+        :param start: Starting timestamp (inclusive)
+        :param end: Ending timestamp (excluded)
+        :param query_key: Document key which we queried against
+        :param query_interval: The interval for `query_key`
+        :type results: list
+        :type start: datetime.datetime
+        :type send: datetime.datetime
+        :type query_key: str
+        :type query_interval: int
 
         """
         # This is the period for this query
         period = self.interval
 
-        # Iterate over the docs, which we got back in sorted order
-        parsed = defaultdict(list)  # Stores the count lists per event
-        summed_count = 0  # Stores the count when summing to a larger period
-        key_interval = self.cls.config_period - 1  # Top level interval for the
+        parsed = {}  # Stores the stamp-count dicts per event
+        key_interval = self.cls.config_period - 1  # Top level interval
 
-        event = None
+        # Create a preallocated dict for the range (start, stop]. This ensures
+        # we always return the correct number of counts, even if we're going
+        # backwards or forwards to when we don't have any docs
+        periods = []  # All the periods in this query
         current = _period(period, start)
+        end = _relative_period(period, current, 1)
+        while current < stop:
+            periods.append(current)
+            current = _relative_period(period, current, 1)
+        empty_counts = {p: ReportCount(0, p) for p in periods}
+
+        # Iterate over the docs, which we got back in sorted order
         for doc in results:
+            if period > query_interval:
+                # Set up the current and ending timeframe, based on the query
+                # starting period, which is only relavant if we have to sum the
+                # parsed counts
+                current = _period(period, start)
+                end = _relative_period(period, current, 1)
             # Get the values for the key we used
             values = doc[query_key]
-            # If we're summing, we need to store the current sum when the event
-            # changes
-            if (event and (doc.meta.event != event) and (period >
-                    query_interval)):
-                parsed[event].append(ReportCount(summed_count, current))
-                summed_count = 0
-            # Set up the current and ending timeframe, based on the query
-            # period
-            current = _period(period, start)
-            end = _relative_period(period, current, 1)
             # Get the doc's event and period
             event = doc.meta.event
             doc_period = doc.meta.period
-            # Iterate over the yielded counts and timestamps
+            # Ensure we have the empty counts for this event
+            if event not in parsed:
+                parsed[event] = empty_counts.copy()
+
+            # Iterate over the parsed counts and timestamps, which will come
+            # according to the doc's interval
             for stamp, count in _parse_section(values, key_interval,
                     doc_period):
                 # Ensure we only take values from within the query frame
-                if stamp < start or stamp >= stop:
+                if stamp < start:
+                    # If we're before the start, we skip
                     continue
+                if stamp >= stop:
+                    # If we're after the stop we break because the parsed
+                    # counts will be ordered
+                    break
+
                 # If we have a greater period than what we queried for, we have
                 # to sum those values
                 if period > query_interval:
-                    # If the current stamp is past the end of this summing
-                    # period then we store it as the new count, and create new
-                    # current and end timestamps
+                    # If the current stamp is past the end of this period
+                    # create new current and end timestamps
                     if stamp >= end:
-                        parsed[event].append(ReportCount(summed_count,
-                            current))
-                        summed_count = count
-                        current = end
+                        current = _relative_period(period, stamp, 0)
                         end = _relative_period(period, current, 1)
-                    else:
-                        # Otherwise we just sum it up
-                        summed_count += count
-                # It's impossible to have a smaller period, so this means we
-                # matched what we queried for, and we can just go
-                else:
-                    parsed[event].append(ReportCount(count, stamp))
 
-        # If we're summing, we need to store the current sum
-        if period > query_interval:
-            parsed[event].append(ReportCount(summed_count, current))
+                    # Otherwise we just sum it up
+                    parsed[event][current] += count
+
+                # It's impossible to have a smaller period than what's
+                # available in the doc, so this means we matched what we
+                # queried for, and we just add it
+                else:
+                    parsed[event][stamp] += count
+
+        # Convert the count dictionaries to lists
+        for event in parsed:
+            counts = parsed[event]
+            parsed[event] = [counts[p] for p in periods]
 
         return parsed
 

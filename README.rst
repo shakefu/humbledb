@@ -7,6 +7,7 @@ connection to a MongoDB cluster or replica set is being used, by disallowing
 any read or write interaction outside of a context manager's context block.
 
 .. image:: https://api.travis-ci.org/shakefu/humbledb.png
+.. image:: https://coveralls.io/repos/shakefu/humbledb/badge.png?branch=master
 
 Quick Example
 -------------

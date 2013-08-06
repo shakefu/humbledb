@@ -4,6 +4,6 @@ python:
 services: mongodb
 install:
     - pip install --use-mirrors .
-    - pip install --use-mirrors coveralls-python coverage
+    - pip install --use-mirrors coveralls coverage
 script: coverage run --source=humbledb setup.py test
 after_success: coveralls

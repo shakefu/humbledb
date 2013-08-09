@@ -488,3 +488,14 @@ def test_monthly_report_queried_daily_returns_correct_length():
         ok_(day.timestamp > date)
         date = day.timestamp
 
+
+def test_record_arbitrary_count():
+    event = 'event_arbitrary_count'
+    with DBTest:
+        Monthly.record(event, count=20)
+        eq_(sum(Monthly.hourly(event)[-1:]), 20)
+
+
+@raises(ValueError)
+def test_record_bad_stamp_type_raises_value_error():
+    Monthly.record('foo', 20)

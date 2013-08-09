@@ -103,7 +103,7 @@ class Report(Document):
         return cls.config_id_format % info
 
     @classmethod
-    def record(cls, event, stamp=None, safe=False):
+    def record(cls, event, stamp=None, safe=False, count=1):
         """
         Record an instance of `event` that happened at `stamp`.
 
@@ -113,17 +113,27 @@ class Report(Document):
         :param event: Event identifier string
         :param stamp: Datetime stamp for this event (default: now)
         :param safe: Safe write option passed to pymongo
+        :param count: Number to increment
         :type event: str
         :type stamp: datetime.datetime
         :type safe: bool
+        :type count: int
 
         """
+        if not isinstance(count, (int, long)):
+            raise ValueError("'count' must be int or long, got %r instead" %
+                    type(count))
+
+        if stamp and not isinstance(stamp, (datetime.datetime, datetime.date)):
+            raise ValueError("'stamp' must be datetime or date, got %r instead"
+                    % type(stamp))
+
         # Get our stamp as UTC time or use the current time
         stamp = pytool.time.as_utc(stamp) if stamp else pytool.time.utcnow()
         # Do preallocation
         cls._attempt_preallocation(event, stamp)
         # Get the update query
-        update = cls._update_query(stamp)
+        update = cls._update_query(stamp, count)
         # Get our query doc
         doc = {'_id': cls.record_id(event, stamp)}
         # Update/upsert the document, hooray
@@ -150,15 +160,37 @@ class Report(Document):
         return ReportQuery(cls, MINUTE)
 
     @classmethod
-    def _update_clause(cls, interval, stamp):
+    def _update_query(cls, stamp, count=1):
+        """
+        Return the update query for the datetime `stamp`.
+
+        :param stamp: A datetime
+        :param count: Number to increment
+        :type stamp: datetime.datetime
+        :type count: int
+
+        """
+        stamp = stamp or pytool.time.utcnow()
+
+        # Compose an update clause for all intervals
+        update = {}
+        for interval in cls.config_intervals:
+            update.update(cls._update_clause(interval, stamp, count))
+
+        return {'$inc': update}
+
+    @classmethod
+    def _update_clause(cls, interval, stamp, count=1):
         """
         Return an update dictionary suitable for merging into a ``$inc`` update
         clause.
 
         :param interval: Time interval being recorded
         :param stamp: Datetime being recorded
+        :param count: Number to increment
         :type interval: int
         :type stamp: datetime.datetime
+        :type count: int
 
         """
         period = cls.config_period
@@ -169,29 +201,12 @@ class Report(Document):
         hour = stamp.hour
         minute = stamp.minute
 
+        # Build a dotted key name like 'y.12.25'
         intervals = [0, minute, hour, day, month]
         key = intervals[interval:period] + [cls._map_interval(interval)]
         key = '.'.join(str(s) for s in reversed(key))
 
-        return {key: 1}
-
-    @classmethod
-    def _update_query(cls, stamp):
-        """
-        Return the update query for the datetime `stamp`.
-
-        :param stamp: A datetime
-        :type stamp: datetime.datetime
-
-        """
-        stamp = stamp or pytool.time.utcnow()
-
-        # Compose an update clause for all intervals
-        update = {}
-        for interval in cls.config_intervals:
-            update.update(cls._update_clause(interval, stamp))
-
-        return {'$inc': update}
+        return {key: count}
 
     @classmethod
     def _map_interval(cls, interval):
@@ -825,10 +840,9 @@ def _relative_period(period, stamp, diff):
     """
     Return `stamp` offset by `diff` periods.
 
-    For example, if ``config_period`` is set to :data:`YEAR` and `diff` is
-    -2, this method will return the start of the period 2 years before. If
-    ``config_period`` is :data:`MONTH` and `diff` is 1, this method will
-    return the start of the next month.
+    For example, if `period` is :data:`YEAR` and `diff` is -2, this method will
+    return the start of the period 2 years before. If `period` is :data:`MONTH`
+    and `diff` is 1, this method will return the start of the next month.
 
     :param period: Report period
     :param stamp: A datetime
@@ -878,9 +892,9 @@ def _relative_period(period, stamp, diff):
 
 def _period(period, stamp):
     """
-    Return `stamp` floored to the start of this document's period. For
-    example, if the period is a ``YEAR``, then January 1 of the given year
-    will be returned.
+    Return `stamp` floored to the start of `period`. For example, if the
+    `period` is a ``YEAR``, then January 1 of the year containing `stamp` will
+    be returned.
 
     :param stamp: Datetime to be floored
     :type stamp: datetime.datetime

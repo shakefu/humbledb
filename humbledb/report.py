@@ -164,14 +164,12 @@ class Report(Document):
         """
         Return the update query for the datetime `stamp`.
 
-        :param stamp: A datetime
+        :param stamp: A UTC datetime
         :param count: Number to increment
         :type stamp: datetime.datetime
         :type count: int
 
         """
-        stamp = stamp or pytool.time.utcnow()
-
         # Compose an update clause for all intervals
         update = {}
         for interval in cls.config_intervals:
@@ -186,7 +184,7 @@ class Report(Document):
         clause.
 
         :param interval: Time interval being recorded
-        :param stamp: Datetime being recorded
+        :param stamp: A UTC datetime being recorded
         :param count: Number to increment
         :type interval: int
         :type stamp: datetime.datetime
@@ -236,8 +234,8 @@ class Report(Document):
         preallocated and do so.
 
         :param event: Event identifier string
+        :param stamp: A UTC datetime indicating the document period
         :type event: str
-        :param stamp: A datetime indicating the document period
         :type stamp: datetime.datetime
 
         """
@@ -260,13 +258,11 @@ class Report(Document):
         `stamp`.
 
         :param event: Event identifier string
+        :param stamp: A UTC datetime indicating the document period
         :type event: str
-        :param stamp: A datetime indicating the document period
         :type stamp: datetime.datetime
 
         """
-        # Convert the stamp to UTC or get the current UTC time
-        stamp = pytool.time.as_utc(stamp) if stamp else pytool.time.utcnow()
         # Get the time period for this report
         period = cls._period(stamp)
         # If we already have preallocated for this time period, get out of here
@@ -305,14 +301,12 @@ class Report(Document):
         Return the query and update for preallocating a document.
 
         :param event: Event identifier string
+        :param stamp: A UTC datetime indicating the document period
         :type event: str
-        :param stamp: A datetime indicating the document period
         :type stamp: datetime.datetime
 
         """
         period = cls.config_period
-        # Ensure we're always working with UTC
-        stamp = pytool.time.as_utc(stamp)
 
         # Build the base query, which is just a lookup against the id
         query = {'_id': cls.record_id(event, stamp)}
@@ -325,9 +319,7 @@ class Report(Document):
             # for each interval key
             query[key] = {'$exists': 0}
             # Update the update clause with the preallocated structures
-            prealloc = {key: cls._preallocate_interval(period, interval,
-                stamp)}
-            update.update(prealloc)
+            update[key] = cls._preallocate_interval(period, interval, stamp)
 
         update[cls.meta.event] = event
         update[cls.meta.period] = cls._period(stamp)

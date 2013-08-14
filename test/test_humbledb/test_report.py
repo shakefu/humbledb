@@ -347,6 +347,7 @@ def test_report_query_end_index():
 
     stamp = pytool.time.utcnow()
     stamp = stamp.replace(minute=59, second=59)
+    event = 'event_query_end_index_per_minute'
     with DBTest:
         Daily.record(event, stamp)
         eq_(Daily.per_minute(event)[0:60][-1], 1)
@@ -489,6 +490,18 @@ def test_monthly_report_queried_daily_returns_correct_length():
         date = day.timestamp
 
 
+def test_report_queried_with_date_works():
+    today = datetime.date.today()
+    tomorrow = today + datetime.timedelta(days=1)
+
+    event = 'event_query_with_date'
+    with DBTest:
+        Monthly.record(event)
+        Monthly.record(event)
+        Monthly.record(event)
+        eq_(sum(Monthly.daily(event)[today:tomorrow]), 3)
+
+
 def test_record_arbitrary_count():
     event = 'event_arbitrary_count'
     with DBTest:
@@ -496,6 +509,23 @@ def test_record_arbitrary_count():
         eq_(sum(Monthly.hourly(event)[-1:]), 20)
 
 
+def test_record_negative_count():
+    event = 'event_negative_count'
+    with DBTest:
+        Monthly.record(event, count=-5)
+        eq_(sum(Monthly.hourly(event)[-1:]), -5)
+
+
 @raises(ValueError)
 def test_record_bad_stamp_type_raises_value_error():
     Monthly.record('foo', 20)
+
+
+@raises(ValueError)
+def test_record_bad_count_type_raises_value_error():
+    Monthly.record('foo', count='bar')
+
+
+@raises(ValueError)
+def test_record_bad_count_type_raises_value_error2():
+    Monthly.record('foo', count=2.5)

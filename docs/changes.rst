@@ -6,6 +6,12 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.1.0
+-----
+
+- Add `count` keyword argument to :meth:`humbledb.report.Report.record` to
+  allow recording multiple events instead of always incrementing one.
+
 5.0.1
 -----
 

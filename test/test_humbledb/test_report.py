@@ -474,12 +474,12 @@ def test_monthly_report_queried_daily_returns_correct_length():
     event = 'monthly_as_daily'
     with DBTest:
         Sum.record(event)
-        Sum.record(event, earlier)
-        days = Sum.daily[-45:]
+        Sum.record(event, stamp=earlier)
+        days = Sum.daily[-65:]
 
     days = days.get(event, [])
     # Check we get the right number of days
-    eq_(len(days), 45)
+    eq_(len(days), 65)
     # Check we get the correct total
     eq_(sum(days), 2)
 
@@ -491,8 +491,10 @@ def test_monthly_report_queried_daily_returns_correct_length():
 
 
 def test_report_queried_with_date_works():
-    today = datetime.date.today()
-    tomorrow = today + datetime.timedelta(days=1)
+    now = pytool.time.utcnow()
+    today = now.date()
+    tomorrow = now + datetime.timedelta(days=1)
+    tomorrow = tomorrow.date()
 
     event = 'event_query_with_date'
     with DBTest:

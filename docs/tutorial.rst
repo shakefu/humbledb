@@ -816,24 +816,45 @@ certain webpage, or offer signups.
 In cases where the event data is sparse, diverse, or has many parameters, other
 aggregation approaches may work better. 
 
-:note: Due to time constraints, the documentation on reports is incomplete.
+:note: The documentation on reports is incomplete, and a work in progress.
        Please see the :doc:`api` for more information. If you
        have questions or issues, please contact me via `github issues
        <http://github.com/shakefu/humbledb/issues>`_.
+
+.. versionchanged:: 5.0
+   Reports got a full rewrite in version 5 of HumbleDB. They are not backwards
+   compatible, but much more useful and efficient. It's highly recommended that
+   you migrate old reports to the new classes.
 
 .. rubric:: Example: 
 
 ::
 
-   from humbledb.report import DailyReport 
+   from humbledb.report import Report, MONTH, HOUR
 
-   class DailyPageHits(DailyReport):
+   class DailyPageHits(Report):
+       """
+       This is an example of a class used to record hits to pages.
+
+       This class creates one document per page per month
+       
+       This class records the total hits per page per month, as well as the
+       hits per page per hour for each hour in the month.
+
+       """
        config_database = 'reports'
        config_collection = 'page_hits'
-       config_resolution = MINUTE
+       config_period = MONTH  # This is the document timeframe
+       config_intervals = [MONTH, HOUR]  # Timeframes that data is recorded
 
-   url_path = '/about'
-   DailyPageHits().record(url_path)
+   # Record a hit to the /about page
+   page = '/about'
+   with Mongo:
+      DailyPageHits.record(page)
+
+   # Get the last 24 hours worth of hits for /about as a list
+   with Mongo:
+      hits = DailyPageHits.hourly(page)[-24:]
 
 
 .. _arrays:

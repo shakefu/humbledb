@@ -122,12 +122,14 @@ class Array(object):
         page['padding'] = '0' * self.config_padding
         # Insert the new page
         try:
-            Page.insert(page)
+            # We need to do this as safe, because otherwise it may not be
+            # available to a subsequent call to append
+            Page.insert(page, safe=True)
         except humbledb.errors.DuplicateKeyError:
             # A race condition already created this page, so we are done
             return
         # Remove the padding
-        Page.update({'_id': page._id}, {'$unset': {'padding': 1}})
+        Page.update({'_id': page._id}, {'$unset': {'padding': 1}}, safe=True)
 
     def append(self, entry):
         """

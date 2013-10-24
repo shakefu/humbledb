@@ -6,10 +6,16 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.1.2
+-----
+
+- Fix a bug where a :class:`~humbledb.report.Report` would raise a ValueError
+  on querying months with 30 days.
+
 5.1.1
 -----
 
-- Fix a bug where a :class:`~humbledb.arary.Array` may not have its page
+- Fix a bug where a :class:`~humbledb.array.Array` may not have its page
   created before an append call attempts to modify it by adding write concern
   to the insert.
 

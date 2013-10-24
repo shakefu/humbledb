@@ -531,3 +531,15 @@ def test_record_bad_count_type_raises_value_error():
 @raises(ValueError)
 def test_record_bad_count_type_raises_value_error2():
     Monthly.record('foo', count=2.5)
+
+
+def test_recording_and_retrieving_in_september_works():
+    with DBTest:
+        Monthly.record('test_september', datetime.datetime(2013, 9, 1, 12))
+
+    with DBTest:
+        vals = Monthly.hourly('test_september')[datetime.datetime(2013, 8, 1):
+                datetime.datetime(2013, 10, 10)]
+
+    eq_(sum(vals), 1)
+

@@ -926,7 +926,13 @@ def _parse_section(values, interval, stamp):
             elif interval == HOUR:
                 stamp = stamp.replace(hour=i)
             elif interval == DAY:
-                stamp = stamp.replace(day=i + 1)
+                try:
+                    stamp = stamp.replace(day=i + 1)
+                except ValueError:
+                    # Due to lazy preallocation, we may actually end up with
+                    # illegal lengths of values (for instance 31 days in
+                    # September) so we just ignore this and move on
+                    continue
             elif interval == MONTH:
                 stamp = stamp.replace(month=i + 1)
             # Get the value we're working with

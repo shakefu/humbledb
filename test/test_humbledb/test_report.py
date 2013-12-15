@@ -334,6 +334,7 @@ def test_report_query_end_index():
     stamp = pytool.time.utcnow()
     stamp = report._relative_period(MONTH, stamp, 1)
     stamp -= datetime.timedelta(seconds=1)
+    event = 'event_report_query_end_index_daily'
     with DBTest:
         Daily.record(event, stamp)
         _, end_of_month = calendar.monthrange(stamp.year, stamp.month)

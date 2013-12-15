@@ -166,7 +166,7 @@ class Mongo(object):
     intelligently choose a class based on your replica settings and PyMongo
     version. """
 
-    config_max_pool_size = pyconfig.setting('humbledb.connection_pool', 10)
+    config_max_pool_size = pyconfig.setting('humbledb.connection_pool', 300)
     """ This specifies the max_pool_size of the connection. """
 
     config_auto_start_request = pyconfig.setting('humbledb.auto_start_request',

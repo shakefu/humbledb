@@ -6,6 +6,13 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.1.3
+-----
+
+- Bump the default for :attr:`~humbledb.mongo.Mongo.config_max_pool_size` up to
+  300, since in PyMongo 2.6, they changed the behavior of connection pools to
+  make that a blocking limit, rather than a minimum size.
+
 5.1.2
 -----
 

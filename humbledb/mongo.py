@@ -121,7 +121,7 @@ class MongoMeta(type):
     def authenticate(cls, database, username=None, password=None):
         """ Delegates authentication to be the responsibility of the
             context manager.
-            .. versionadded: 5.2
+            .. versionadded: 5.2.0
         """
         # Turning authentication off makes this call a noop
         _config_use_auth = cls.config_use_authentication
@@ -212,7 +212,7 @@ class Mongo(object):
         to the database if overriding credentials are not found in the
         :class:`~humbledb.document.Document` config_auth attribute.
 
-        Authentication uses Mongodb-CR.
+        Authentication uses MONGODB-CR.
 
         .. versionadded: 5.2
     """

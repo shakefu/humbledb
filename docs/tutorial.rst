@@ -311,6 +311,34 @@ excluding the ``_id`` key/attribute.
        if key in some_dict:
            doc[key] = some_dict[key]
 
+.. _overriding-authentication:
+
+Overriding Authentication
+-------------------------
+
+Because each document is assigned to a specific database using the
+`config_database` attribute, you may have the situation where a database
+has its own specific credentials.  In this case, you can override the
+credentials of the :class:`~humbledb.mongo.Mongo` class by giving
+the document its own credentials using the `config_auth` attribute.
+
+.. rubric:: Example: Setting up a document with specific
+    authentication parameters
+
+::
+
+   class AuthedDoc(Document):
+       config_database = 'authed_humble'
+       config_collection = 'authdoc'
+       config_auth = 'anotheruser:supersecret'
+
+       value = 'v'
+
+    with AuthedDB:
+       some_doc = AuthedDoc.find({AuthedDoc.value: 'foo'})
+
+.. versionadded:: 5.2.0
+
 .. _embedding-documents:
 
 Embedding Documents
@@ -732,12 +760,27 @@ however you cannot nest a connection within itself (this will raise a
 .. rubric:: Connection Settings
 
 * **config_host** (``str``) - Hostname to connect to.
-* **config_port** (``int``) - Port to connect to.
+* **config_port** (``int``, optional, default:``27017``) - Port to connect to.
+
+.. versionchanged:: 5.2.0
+
+`config_port` is now optional and will default to what
+:class:`~pymongo.connection.Connection` will use as default (port 27017).
+
 * **config_replica** (``str``, optional) - Name of the replica set.
 
 If ``config_replica`` is present on the class, then HumbleDB will automatically
 use a :class:`~pymongo.connection.ReplicaSetConnection` for you. (Requires 
 ``pymongo >= 2.1``.)
+
+* **config_auth** (``str``, optional) - Username and password.
+
+.. versionadded:: 5.2.0
+
+The `config_auth` string format is identical to how the username and password are
+found in a typical `MongoDB-URI
+<http://docs.mongodb.org/manual/reference/connection-string/>`_ style
+connection string format.
 
 .. rubric:: Global Connection Settings
 
@@ -757,6 +800,10 @@ either :func:`Pyconfig.set` (i.e. ``pyconfig.set('humbledb.connection_pool',
   ``use_greenlets`` with the :class:`~pymongo.connection.Connection`
   instance. (This is only needed if you intend on using threading and greenlets
   at the same time.)
+* **humbledb.use_authentication** (``bool``, default: ``False``) - Whether to
+  use basic authentication, MONGODB-CR, with the
+  :class:`pymongo.connection.Connection` instance.
+.. versionadded:: 5.2.0
 
 More configuration settings are going to be added in the near future, so you
 can customize your :class:`~pymongo.connection.Connection` to completely suit
@@ -779,6 +826,11 @@ your needs.
        config_port = 3002
        config_replica = 'RS1'
 
+   # An connection that uses Mongo-CR for basic authentication
+   class AuthedDB(Mongo):
+       config_host = 'anotherdb.example.com'
+       config_auth = 'someuser:secret'
+
    # Use your custom subclasses as context managers
    with MyDB:
        docs = MyDoc.find({MyDoc.value: {'$gt': 3}})
@@ -799,6 +851,12 @@ your needs.
        MyGroup.update({MyGroup.tags: 'example'},
                {'$push': {MyGroup.related: MyDoc._id},
                multi=True)
+
+    # A Mongo subclass with authentication credentials will try to
+    # authenticate when needed.
+    with AuthedDB:
+        one_doc = AnotherDoc.find_one({AnotherDoc.value: 'a string'})
+
 
 .. _reports:
 

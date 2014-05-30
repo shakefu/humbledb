@@ -8,12 +8,13 @@ from humbledb.array import Array
 class TestArray(Array):
     config_database = database_name()
     config_collection = 'arrays'
+    config_auth = 'authuser:pass1'
     config_max_size = 3
     config_padding = 100
 
 
 def teardown():
-    DBTest.connection.drop_database(database_name())
+    DBTest.connection[database_name()].drop_collection('arrays')
 
 
 def _word():

@@ -68,6 +68,7 @@ def enable_sharding(collection, key):
 class DBTest(Mongo):
     config_host = pyconfig.setting('humbledb.test.db.host', 'localhost')
     config_port = pyconfig.setting('humbledb.test.db.port', 27017)
+    config_auth = 'authuser:pass1'
 
 
 # This instantiates the connection and causes nose to crap out if there's no

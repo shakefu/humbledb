@@ -45,7 +45,12 @@ class ByHour(Report):
 
 
 def teardown():
-    DBTest.connection.drop_database(database_name())
+    DBTest.connection[database_name()].drop_collection('prealloc')
+    DBTest.connection[database_name()].drop_collection('report.year')
+    DBTest.connection[database_name()].drop_collection('report.month')
+    DBTest.connection[database_name()].drop_collection('report.day')
+    DBTest.connection[database_name()].drop_collection('report.sum')
+    DBTest.connection[database_name()].drop_collection('report.by_hour')
 
 
 def test_update_clause_creates_dot_notated_clause():
@@ -322,13 +327,16 @@ def test_report_query_regex():
 
 def test_report_query_end_index():
     stamp = pytool.time.utcnow()
-    stamp = datetime.datetime(stamp.year, 12, 31, 23, 59, 59,
+    this_year = stamp.year
+    last_year = stamp.year-1
+
+    stamp = datetime.datetime(this_year, 12, 31, 23, 59, 59,
             tzinfo=pytool.time.UTC())
 
     event = 'event_report_query_end_index'
     with DBTest:
         Daily.record(event, stamp)
-        eq_(Daily.yearly(event)[2013:2014][-1], 1)
+        eq_(Daily.yearly(event)[last_year+1:this_year+1][-1], 1)
         eq_(Daily.monthly(event)[1:13][-1], 1)
 
     stamp = pytool.time.utcnow()
@@ -356,11 +364,20 @@ def test_report_query_end_index():
 
 def test_unspecified_start_year_index():
     stamp = pytool.time.utcnow()
-    stamp = stamp.replace(year=2012)
+    this_year = stamp.year
+    print 'THIS year: {}'.format(stamp)
+    two_years_ago = this_year-2
+    print 'year (after): {}'.format(two_years_ago)
+    two_years_ago_stamp = stamp.replace(year=two_years_ago)
+    print 'TWO years ago: {}'.format(stamp)
+    diff = 0-(this_year-two_years_ago)
+    print str(diff)
     event = 'event_unspecified_start_year_index'
     with DBTest:
-        ByHour.record(event, stamp)
-        eq_(ByHour.yearly(event)[:-1][-1], 1)
+        ByHour.record(event, two_years_ago_stamp)
+        print len(ByHour.yearly(event)[:-1])
+        print str(ByHour.yearly(event)[:-1][diff])
+        eq_(ByHour.yearly(event)[:-1][diff], 1)
 
 
 def test_no_results():

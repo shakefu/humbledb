@@ -6,7 +6,7 @@ from humbledb import Document, Embed
 
 
 def teardown():
-    DBTest.connection.drop_database(database_name())
+    DBTest.connection[database_name()].drop_collection('doc_test')
 
 
 class MapTest(Document):

@@ -322,13 +322,16 @@ def test_report_query_regex():
 
 def test_report_query_end_index():
     stamp = pytool.time.utcnow()
-    stamp = datetime.datetime(stamp.year, 12, 31, 23, 59, 59,
+    this_year = stamp.year
+    last_year = stamp.year-1
+
+    stamp = datetime.datetime(this_year, 12, 31, 23, 59, 59,
             tzinfo=pytool.time.UTC())
 
     event = 'event_report_query_end_index'
     with DBTest:
         Daily.record(event, stamp)
-        eq_(Daily.yearly(event)[2013:2014][-1], 1)
+        eq_(Daily.yearly(event)[last_year+1:this_year+1][-1], 1)
         eq_(Daily.monthly(event)[1:13][-1], 1)
 
     stamp = pytool.time.utcnow()
@@ -356,12 +359,14 @@ def test_report_query_end_index():
 
 def test_unspecified_start_year_index():
     stamp = pytool.time.utcnow()
-    stamp = stamp.replace(year=2012)
+    this_year = stamp.year
+    two_years_ago = this_year-2
+    two_years_ago_stamp = stamp.replace(year=two_years_ago)
+    diff = 0-(this_year-two_years_ago)
     event = 'event_unspecified_start_year_index'
     with DBTest:
-        ByHour.record(event, stamp)
-        eq_(ByHour.yearly(event)[:-1][-1], 1)
-
+        ByHour.record(event, two_years_ago_stamp)
+        eq_(ByHour.yearly(event)[:-1][diff], 1)
 
 def test_no_results():
     with DBTest:

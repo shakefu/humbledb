@@ -365,18 +365,12 @@ def test_report_query_end_index():
 def test_unspecified_start_year_index():
     stamp = pytool.time.utcnow()
     this_year = stamp.year
-    print 'THIS year: {}'.format(stamp)
     two_years_ago = this_year-2
-    print 'year (after): {}'.format(two_years_ago)
     two_years_ago_stamp = stamp.replace(year=two_years_ago)
-    print 'TWO years ago: {}'.format(stamp)
     diff = 0-(this_year-two_years_ago)
-    print str(diff)
     event = 'event_unspecified_start_year_index'
     with DBTest:
         ByHour.record(event, two_years_ago_stamp)
-        print len(ByHour.yearly(event)[:-1])
-        print str(ByHour.yearly(event)[:-1][diff])
         eq_(ByHour.yearly(event)[:-1][diff], 1)
 
 

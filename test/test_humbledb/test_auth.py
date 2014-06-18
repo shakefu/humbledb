@@ -29,7 +29,7 @@ def test_invalid_document_credentials():
         raise RuntimeError('Failed to validate config_auth')
     except humbledb.errors.InvalidAuth:
         assert True
-        
+
 
 def test_document_retrieval_using_valid_document_credentials():
     class AuthedDoc(Document):

@@ -745,9 +745,9 @@ These settings are available globally through Pyconfig_ configuration keys. Use
 either :func:`Pyconfig.set` (i.e. ``pyconfig.set('humbledb.connection_pool',
 20)`` or create a Pyconfig_ plugin to change these.
 
-* **humbledb.connection_pool** (``int``, default: ``10``) - Size of the
+* **humbledb.connection_pool** (``int``, default: ``300``) - Size of the
   connection pool to use.
-* **humbledb.allow_explicit_request** (``bool``, default: ``False``) - Whether
+* **humbledb.allow_explicit_request** (``bool``, default: ``True``) - Whether
   or not :meth:`~humbledb.mongo.Mongo.start` can be used to define a request,
   without using Mongo as a context manager.
 * **humbledb.auto_start_request** (``bool``, default: ``True``) - Whether to

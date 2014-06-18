@@ -5,6 +5,7 @@ from functools import wraps
 
 import pymongo
 import pyconfig
+from pytool.lang import UNSET
 
 from humbledb import _version
 from humbledb.index import Index
@@ -128,14 +129,16 @@ class DocumentMeta(type):
             'iterkeys', 'itervalues', 'keys', 'pop', 'popitem', 'setdefault',
             'update', 'values', 'viewitems', 'viewkeys', 'viewvalues'])
 
-        # Merge inherited name_maps
+        # Merge inherited name_maps and saved defaults
         name_map = NameMap()
         reverse_name_map = NameMap()
+        saved_defaults = {}
         for base in reversed(bases):
             if issubclass(base, Document):
                 name_map.merge(getattr(base, '_name_map', NameMap()))
                 reverse_name_map.merge(getattr(base, '_reverse_name_map',
                     NameMap()))
+                saved_defaults.update(getattr(base, '_saved_defaults', {}))
 
         # Always have an _id attribute
         if '_id' not in cls_dict and '_id' not in name_map:
@@ -152,15 +155,32 @@ class DocumentMeta(type):
             if name in config_names:
                 continue
             # Skip most everything
-            if not isinstance(cls_dict[name], basestring):
+            if not isinstance(cls_dict[name], (basestring, tuple)):
                 continue
             # Skip private stuff
             if name.startswith('_') and name != '_id':
                 continue
 
-            # Remove the defining attribute from the class namespace
-            value = cls_dict.pop(name)
+            value = cls_dict.get(name)
             reverse_value = name
+
+            # Handle default values if we have them
+            default = UNSET
+            if isinstance(value, tuple):
+                # We only look at tuples with length 2
+                if len(value) != 2:
+                    continue
+                value, default = value
+                # Check that the tuple's first value is a string key
+                if not isinstance(value, basestring):
+                    continue
+                # If the default is a callable, it's a saved default value, so
+                # we memoize it for later
+                if default is not UNSET and callable(default):
+                    saved_defaults[value] = default
+
+            # Remove the defining attribute from the class namespace
+            cls_dict.pop(name)
 
             # Convert Embed objects to nested name map objects
             if isinstance(value, Embed):
@@ -170,6 +190,10 @@ class DocumentMeta(type):
                 # Regular attributes are converted to name map objects as well
                 reverse_value = NameMap(name)
                 value = NameMap(value)
+                # If the default value isn't callable, then we memoize it in
+                # the name map for later retrieval
+                if not callable(default):
+                    value._default_value = default
 
             name_map[name] = value
             reverse_name_map[value] = reverse_value
@@ -180,6 +204,9 @@ class DocumentMeta(type):
 
         # Create collection attribute
         cls_dict['collection'] = CollectionAttribute()
+
+        # Create saved default value attribute
+        cls_dict['_saved_defaults'] = saved_defaults
 
         # Create the class
         cls = type.__new__(mcs, cls_name, bases, cls_dict)
@@ -259,20 +286,11 @@ class DocumentMeta(type):
 
         return cursor_wrapper
 
-    def _get_update(cls):
-        """ Method to pass through the *dict*'s update method and instead use
-            the collection method.
-
-        """
-        return cls._update or cls.collection.update
-
-    def _set_update(cls, value):
-        """ Allows setting the update attribute for testing with mocks. """
-        cls._update = value
-
-    def _del_update(cls):
-        """ Allows deleting the update attribute for testing with mocks. """
-        cls._update = None
+    # Create an update property which will work with mocks in testing
+    def _get_update(cls): return cls._update or cls.collection.update
+    def _set_update(cls, value): cls._update = value
+    def _del_update(cls): cls._update = None
+    update = property(_get_update, _set_update, _del_update)
 
     def mapped_keys(cls):
         """ Return a list of the mapped keys. """
@@ -282,7 +300,60 @@ class DocumentMeta(type):
         """ Return a list of the mapped attributes. """
         return cls._name_map.mapped()
 
-    update = property(_get_update, _set_update, _del_update)
+    def save(cls, *args, **kwargs):
+        """
+        Override collection save method to allow saved defaults.
+
+        Takes same arguments as :meth:`pymongo.collection.Collection.save`.
+
+        If `manipulate` is ``False`` then the saved defaults will not be
+        inserted.
+
+        :param manipulate: If ``True`` manipulate the documents before saving \
+                (optional)
+        :type manipulate: bool
+
+        """
+        if args and kwargs.get('manipulate', True):
+            cls._ensure_saved_defaults(args[0])
+
+        return cls.collection.save(*args, **kwargs)
+
+    def insert(cls, *args, **kwargs):
+        """
+        Override collection insert method to allow saved defaults.
+
+        Takes same arguments as :meth:`pymongo.collection.Collection.insert`.
+
+        If `manipulate` is ``False`` then the saved defaults will not be
+        inserted.
+
+        :param manipulate: If ``True`` manipulate the documents before \
+                inserting (optional)
+        :type manipulate: bool
+
+        """
+        if args and kwargs.get('manipulate', True):
+            # Insert can take an iterable of documents or a single doc
+            doc_or_docs = args[0]
+            if isinstance(doc_or_docs, dict):
+                cls._ensure_saved_defaults(doc_or_docs)
+            else:
+                for doc in doc_or_docs:
+                    cls._ensure_saved_defaults(doc)
+
+        return cls.collection.insert(*args, **kwargs)
+
+    def _ensure_saved_defaults(cls, doc):
+        """ Update `doc` to ensure saved defaults exist before saving. """
+        # Shortcut out if we don't have any
+        if not cls._saved_defaults:
+            return
+        # Iterate over the saved defaults and assign them if they don't already
+        # exist
+        for key, value in cls._saved_defaults.iteritems():
+            if key not in doc:
+                doc[key] = value()
 
 
 class Document(dict):
@@ -329,9 +400,26 @@ class Document(dict):
         # Get the reverse mapped keys
         reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
 
+        # Set saved default values if they aren't already
+        # This has to be called on the class itself, not the instance
+        type(self)._ensure_saved_defaults(self)
+
         def mapper(doc, submap):
             """ Maps `doc` keys with the given `submap` substitution map. """
             copy = {}
+
+            # A bit of trickiness here to get the default values that aren't
+            # saved back to the doc. We check for whether the `doc` is a
+            # `Document` subclass because right now defaults can only exist at
+            # the top level document
+            if isinstance(doc, Document):
+                name_map = object.__getattribute__(doc, '_name_map')
+                # The name map has no knowledge of the attribute key names, so
+                # we have to use the reverse name map to get those
+                defaults = {reverse_name_map[k]: v for k, v in
+                        name_map._defaults().iteritems()}
+                copy.update(defaults)
+
             for key, value in doc.items():
                 if key in submap:
                     mapped = submap[key]
@@ -368,6 +456,7 @@ class Document(dict):
         # Get the mapped attributes
         name_map = object.__getattribute__(self, '_name_map')
         reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
+        saved_defaults = object.__getattribute__(self, '_saved_defaults')
         # If the attribute is mapped, map it!
         if name in name_map:
             # name_map is a dict key and potentially a NameMap too here
@@ -377,17 +466,30 @@ class Document(dict):
             # Check if we actually have a key for that value
             if key in self:
                 value = self[key]
+                # TBD shakefu: Whether we should check whether the name_map is
+                # empty before continuing to map subkeys - this may be a slight
+                # performance improvement by removing the DictMap and ListMap
+                # layers for unmapped items
                 # If it's a dict, we need to keep mapping subkeys
                 if isinstance(value, dict):
                     value = DictMap(value, name_map, self, key,
                             reverse_name_map)
+                # If it's a list, we need to keep mapping subkeys
                 elif isinstance(value, list):
                     value = ListMap(value, name_map, self, key,
                             reverse_name_map)
                 return value
             elif isinstance(name_map, NameMap):
-                # Return an empty dict map to allow sub-key assignment
-                return DictMap({}, name_map, self, key, reverse_name_map)
+                if key in saved_defaults:
+                    # Get the new saved value
+                    value = saved_defaults[key]()
+                    # Assign it back to this document's dict
+                    self[key] = value
+                    # Use getattr to re-retrieve the value appropriately
+                    # wrapped, in case it's a dict or list
+                    return getattr(self, name)
+                # Return the default value for this NameMap
+                return name_map._default(self, key, reverse_name_map)
             else:
                 # Return if a mapped attribute is missing
                 # XXX: This should never happen

@@ -1,5 +1,6 @@
 """
 """
+from pytool.lang import UNSET
 from pytool.proxy import DictProxy, ListProxy
 
 
@@ -8,6 +9,7 @@ class NameMap(unicode):
     """
     def __init__(self, value=''):
         self._key = value.split('.')[-1]
+        self._default_value = UNSET
         super(NameMap, self).__init__(value)
 
     @property
@@ -15,6 +17,13 @@ class NameMap(unicode):
         # We don't map leading underscore names, so we cheat by storing our key
         # in a private var, and then get it back out again
         return self._key
+
+    def _default(self, doc, key, reverse_name_map):
+        """ Return the default value for this name map. """
+        if self._default_value is not UNSET:
+            return self._default_value
+        # Return an empty dict map to allow sub-key assignment
+        return DictMap({}, self, doc, key, reverse_name_map)
 
     def __setitem__(self, key, value):
         self.__dict__[key] = value
@@ -38,6 +47,11 @@ class NameMap(unicode):
         """ Merges another `.NameMap` instance into this one. """
         self.__dict__.update(other.filtered())
 
+    def _defaults(self):
+        """ Return a dict of default values. """
+        return {n.key: n._default_value for n in self.filtered().values() if
+                isinstance(n, NameMap) and n._default_value is not UNSET}
+
     def empty(self):
         """
         Return ``True`` if this name map does not contain any sub keys,
@@ -46,7 +60,10 @@ class NameMap(unicode):
         .. versionadded: 4.0
 
         """
-        if len(self.__dict__) == 1 and self.__dict__.keys() == ['_key']:
+        _dict = self.__dict__
+        if (len(_dict) == 2
+                and '_key' in _dict
+                and '_default_value' in _dict):
             return True
         return False
 

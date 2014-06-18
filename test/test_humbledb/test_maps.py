@@ -1,8 +1,8 @@
 import pytool
 
-from ..util import *
-from humbledb.maps import ListMap
 from humbledb import Document, Embed
+from humbledb.maps import ListMap, DictMap
+from ..util import eq_, ok_, DBTest, is_instance_, is_, raises, database_name
 
 
 def teardown():
@@ -97,14 +97,13 @@ def test_bad_embedded_mappings_raise_an_attribute_error_on_the_instance():
     Test().embed.not_mapped
 
 
-def test_embedded_key_retrieval_on_instance_is_none():
+def test_embedded_key_retrieval_on_instance_is_empty_dict():
     m = MapTest()
-    print type(m.em)
-    print type(m.em.val)
     eq_(MapTest().em.val, {})
+    eq_(m.em.val, {})
 
 
-def test_missing_key_retrieval_is_none():
+def test_missing_key_retrieval_is_empty_dict():
     eq_(MapTest().val, {})
 
 
@@ -339,5 +338,46 @@ def test_unmapped_list_works_with_new():
     v['1'] = 1
 
     eq_(l, {'v': [{'1': 1}]})
+
+
+def test_mapped_keys_take_default_values_as_tuples():
+    class Default(DocTest):
+        key = 'k', 1
+
+    t = Default()
+
+    eq_(t.key, 1)
+
+
+def test_mapped_keys_with_default_value_doesnt_save_to_doc():
+    class Default(DocTest):
+        key = 'k', 1
+
+    t = Default()
+    eq_(t.key, 1)
+    eq_(dict(t), {})
+
+
+def test_saved_default_wraps_lists_appropriately():
+    class Default(DocTest):
+        saved = 's', lambda: [1]
+
+    t = Default()
+    eq_(t.saved, [1])
+    is_instance_(t.saved, ListMap)
+
+
+def test_saved_default_wraps_dicts_appropriately():
+    class Default(DocTest):
+        saved = 's', lambda: {'1': 1}
+
+    t = Default()
+    eq_(t.saved, {'1': 1})
+    is_instance_(t.saved, DictMap)
+
+
+def test_empty():
+    eq_(ListTest._name_map.vals.empty(), False)
+    eq_(ListTest._name_map.vals.one.empty(), True)
 
 

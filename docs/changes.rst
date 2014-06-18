@@ -6,6 +6,11 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.1.4
+-----
+
+- Patch from `paulnues <https://github.com/paulnues>`_ to fix brittle tests.
+
 5.1.3
 -----
 

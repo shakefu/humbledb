@@ -67,3 +67,9 @@ License
 
 See LICENSE.rst.
 
+Contributors
+------------
+
+* `shakefu <https://github.com/shakefu>`_
+* `paulnues <https://github.com/paulnues>`_
+

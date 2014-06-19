@@ -325,6 +325,7 @@ class DocumentMeta(type):
         if args and kwargs.get('manipulate', True):
             cls._ensure_saved_defaults(args[0])
 
+        cls.authenticate()
         return cls.collection.save(*args, **kwargs)
 
     def insert(cls, *args, **kwargs):
@@ -350,6 +351,7 @@ class DocumentMeta(type):
                 for doc in doc_or_docs:
                     cls._ensure_saved_defaults(doc)
 
+        cls.authenticate()
         return cls.collection.insert(*args, **kwargs)
 
     def _ensure_saved_defaults(cls, doc):

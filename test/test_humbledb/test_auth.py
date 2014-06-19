@@ -28,6 +28,8 @@ def test_auth_call_with_no_config():
 
 
 def test_auth_logout():
+    auth_check()
+
     class AuthMongo(Mongo):
         config_host = 'localhost'
         config_auth = 'authuser:pass1'

@@ -9,7 +9,6 @@ from test.util import (database_name, DBTest, ok_, eq_, enable_sharding,
 class TestArray(Array):
     config_database = database_name()
     config_collection = 'arrays'
-    config_auth = 'authuser:pass1'
     config_max_size = 3
     config_padding = 100
 

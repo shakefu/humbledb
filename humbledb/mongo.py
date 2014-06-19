@@ -124,7 +124,7 @@ class MongoMeta(type):
     def authenticate(cls, database, username=None, password=None):
         """ Delegates authentication to be the responsibility of the
             context manager.
-            .. versionadded: 5.2.0
+            .. versionadded: 6.0.0
         """
         # Having no credentials makes this call a noop.
         if not cls.config_auth:
@@ -148,7 +148,7 @@ class MongoMeta(type):
 
     def logout(cls, database):
         """ Explicitly deauthorizes the connection client from the database.
-            .. versionadded: 5.2
+            .. versionadded: 6.0.0
         """
         if cls._connection:
             cls._connection[database].logout()
@@ -206,7 +206,7 @@ class Mongo(object):
 
         Authentication uses MONGODB-CR.
 
-        .. versionadded: 5.2
+        .. versionadded: 6.0.0
     """
 
     config_replica = None

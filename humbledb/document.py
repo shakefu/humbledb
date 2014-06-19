@@ -400,7 +400,7 @@ class Document(dict):
     """ Indexes for this document. """
     config_auth = None
     """ Optional authentication credentials to use to connect to the database.
-        .. versionadded: 5.2
+        .. versionadded: 6.0.0
     """
 
     def __repr__(self):
@@ -578,7 +578,7 @@ class Document(dict):
     @classmethod
     def authenticate(cls):
         """ Authenticates wrapped document collection calls.
-            .. versionadded: 5.2
+            .. versionadded: 6.0.0
         """
         if not Mongo.context:
             raise NoConnection("Need connection to authenticate.")

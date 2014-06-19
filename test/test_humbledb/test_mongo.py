@@ -9,11 +9,6 @@ from humbledb import Mongo
 from humbledb import _version
 
 
-def teardown():
-    DBTest.authenticate(database_name(), username='authuser', password='pass1')
-    DBTest.connection[database_name()].drop_collection('test')
-
-
 def test_new():
     assert_equal(DBTest, DBTest())
 

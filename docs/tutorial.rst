@@ -318,7 +318,7 @@ Overriding Authentication
 
 Because each document is assigned to a specific database using the
 `config_database` attribute, you may have the situation where a database
-has its own specific credentials.  In this case, you can override the
+has its own specific credentials.  In this case, you may override the
 credentials of the :class:`~humbledb.mongo.Mongo` class by giving
 the document its own credentials using the `config_auth` attribute.
 
@@ -800,10 +800,6 @@ either :func:`Pyconfig.set` (i.e. ``pyconfig.set('humbledb.connection_pool',
   ``use_greenlets`` with the :class:`~pymongo.connection.Connection`
   instance. (This is only needed if you intend on using threading and greenlets
   at the same time.)
-* **humbledb.use_authentication** (``bool``, default: ``False``) - Whether to
-  use basic authentication, MONGODB-CR, with the
-  :class:`pymongo.connection.Connection` instance.
-.. versionadded:: 5.2.0
 
 More configuration settings are going to be added in the near future, so you
 can customize your :class:`~pymongo.connection.Connection` to completely suit
@@ -826,7 +822,7 @@ your needs.
        config_port = 3002
        config_replica = 'RS1'
 
-   # An connection that uses Mongo-CR for basic authentication
+   # A connection that uses Mongo-CR for basic authentication
    class AuthedDB(Mongo):
        config_host = 'anotherdb.example.com'
        config_auth = 'someuser:secret'
@@ -855,6 +851,7 @@ your needs.
     # A Mongo subclass with authentication credentials will try to
     # authenticate when needed.
     with AuthedDB:
+        # No additional authentication calls are necessary!
         one_doc = AnotherDoc.find_one({AnotherDoc.value: 'a string'})
 
 

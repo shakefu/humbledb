@@ -21,6 +21,8 @@ class MongoMeta(type):
 
     """
     _connection = None
+    _credentials = None
+    """ Auth credentials if given. """
 
     def __new__(mcs, name, bases, cls_dict):
         """ Return the Mongo class. """
@@ -72,7 +74,8 @@ class MongoMeta(type):
         _config_auth = cls_dict.get('config_auth', None)
         if _config_auth:
             try:
-                creds = pymongo.uri_parser.parse_userinfo(str(_config_auth))
+                cls_dict['_credentials'] = pymongo.uri_parser.parse_userinfo(
+                        str(_config_auth))
             except pymongo.errors.InvalidURI:
                 raise TypeError("Invalid 'config_auth' value.")
 
@@ -123,22 +126,14 @@ class MongoMeta(type):
             context manager.
             .. versionadded: 5.2.0
         """
-        # Turning authentication off makes this call a noop
-        _config_use_auth = cls.config_use_authentication
-        if not _config_use_auth:
+        # Having no credentials makes this call a noop.
+        if not cls.config_auth:
             return
 
         # Use Mongo class config_auth as defaults if no credentials are
         # passed in.
         if not username or not password:
-            auth = cls.config_auth
-            if not auth:
-                raise MissingConfig('Missing default config_auth.')
-
-            try:
-                username, password = pymongo.uri_parser.parse_userinfo(auth)
-            except pymongo.errors.InvalidURI:
-                raise InvalidAuth('Invalid config_auth.')
+            username, password = cls._credentials
 
         if _version._lt('2.5'):
             valid = cls.connection[database].authenticate(username,
@@ -155,9 +150,6 @@ class MongoMeta(type):
         """ Explicitly deauthorizes the connection client from the database.
             .. versionadded: 5.2
         """
-        if not cls._authenticated.get(database, False):
-            return
-
         if cls._connection:
             cls._connection[database].logout()
 
@@ -190,7 +182,7 @@ class Mongo(object):
         class MyConnection(Mongo):
             config_host = 'cluster1.mongo.mydomain.com'
             config_port = 27017
-            config_auth = 'user:passwd'
+            config_auth = 'user:passwd' # Optional authentication.
 
     Example usage::
 
@@ -245,12 +237,6 @@ class Mongo(object):
 
         .. versionadded: 4.0
 
-    """
-
-    config_use_authentication = pyconfig.setting('humbledb.use_authentication',
-            False)
-    """ This specifies if connections should use authentication or not.
-        .. versionadded: 5.2
     """
 
     def __new__(cls):

@@ -6,6 +6,13 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+6.0.0
+-----
+
+- :class:`~humbledb.array.Array` regexes now escape periods to prevent name
+  collisions.
+
+
 5.1.4
 -----
 

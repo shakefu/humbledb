@@ -3,8 +3,8 @@ import pytool
 import pyconfig
 
 import humbledb
-from ..util import *
 from humbledb import Mongo, Document, Embed, _version
+from ..util import eq_, ok_, raises, DBTest, database_name
 
 
 def teardown():
@@ -651,4 +651,202 @@ def test_exercise_normal_index():
 
     with DBTest:
         Test.find_one()
+
+
+def test_callable_default_creates_saved_defaults():
+    func = lambda: 1
+    class Default(DocTest):
+        saved = 's', func
+
+    t = Default()
+    eq_(t._saved_defaults, {'s': func})
+
+
+def test_saved_default_is_returned_on_instance():
+    func = lambda: 1
+    class Default(DocTest):
+        saved = 's', func
+
+    t = Default()
+    eq_(t.saved, 1)
+
+
+def test_saved_default_is_part_of_the_doc_after_access():
+    func = lambda: 1
+    class Default(DocTest):
+        saved = 's', func
+
+    t = Default()
+    eq_(t.saved, 1)
+    eq_(t, {Default.saved: 1})
+
+
+def test_saved_default_memoizes_first_value_on_multiple_accesses():
+    s = [0]
+    def func():
+        s[0] += 1
+        return s[0]
+
+    class Default(DocTest):
+        saved = 's', func
+
+    t = Default()
+    eq_(t.saved, 1)
+    eq_(t.saved, 1)
+    eq_(s[0], 1)
+
+
+def test_saved_default_is_inheritable():
+    class Default(DocTest):
+        saved = 's', lambda: 1
+
+    class Sub(Default):
+        other = 'o', lambda: 2
+
+    class Over(Default):
+        saved = 's', lambda: 3
+
+    d = Default()
+    eq_(d.saved, 1)
+
+    d = Sub()
+    eq_(d.saved, 1)
+    eq_(d.other, 2)
+
+    d = Over()
+    eq_(d.saved, 3)
+
+
+def test_default_is_inheritable():
+    class Default(DocTest):
+        val = 's', 1
+
+    class Sub(Default):
+        other = 'o', 2
+
+    class Over(Default):
+        val = 's', 3
+
+    d = Default()
+    eq_(d.val, 1)
+
+    d = Sub()
+    eq_(d.val, 1)
+    eq_(d.other, 2)
+
+    d = Over()
+    eq_(d.val, 3)
+
+
+def test_saved_default_is_set_on_saving():
+    class Default(DocTest):
+        saved = 's', lambda: 1
+
+    d = Default()
+    with DBTest:
+        _id = Default.save(d, safe=True)
+        d = Default.find_one(_id)
+
+    d.pop('_id')
+    eq_(dict(d), {Default.saved: 1})
+
+
+
+def test_saved_default_is_set_on_inserting():
+    class Default(DocTest):
+        saved = 's', lambda: 1
+
+    d = Default()
+    with DBTest:
+        _id = Default.insert(d, safe=True)
+        d = Default.find_one(_id)
+
+    d.pop('_id')
+    eq_(dict(d), {Default.saved: 1})
+
+
+def test_saved_default_is_set_on_multiple_inserts():
+    class Default(DocTest):
+        saved = 's', lambda: 1
+
+    docs = []
+    for i in xrange(3):
+        d = Default()
+        d._id = 'test_saved_default_%s' % i
+        docs.append(d)
+
+    with DBTest:
+        _ids = Default.insert(docs, safe=True)
+        eq_(len(_ids), 3)
+        docs = list(Default.find({Default._id: {'$in': _ids}}))
+
+    eq_(len(docs), 3)
+    for doc in docs:
+        doc.pop('_id')
+        eq_(dict(doc), {Default.saved: 1})
+
+
+def test_saved_defaults_are_set_in_json():
+    class Default(DocTest):
+        saved = 's', lambda: 1
+
+    d = Default()
+    eq_(d.for_json(), {'saved': 1})
+
+
+def test_defaults_are_set_in_json_but_not_in_doc():
+    class Default(DocTest):
+        val = 'v', 1
+
+    d = Default()
+    eq_(d.for_json(), {'val': 1})
+    eq_(d.get(Default.val, None), None)
+
+
+def test_saved_defaults_with_defaults_as_json():
+    class Default(DocTest):
+        saved = 's', lambda: 1
+        val = 'v', 2
+
+    d = Default()
+    eq_(d.for_json(), {'val': 2, 'saved': 1})
+    eq_(d.get(Default.val, None), None)
+    eq_(d.saved, 1)
+
+
+@raises(AttributeError)
+def test_embedded_defaults_are_unmapped():
+    class Embedded(DocTest):
+        val = Embed('v')
+        val.sub = 's', 1
+        val.sub2 = 's'
+
+    eq_(Embedded.val.sub, ('s', 1))
+    eq_(Embedded.val.sub2, 'v.s')
+    d = Embedded()
+    d.val.sub  # This will raise AttributeError since val.sub is unmapped
+
+
+def test_only_two_tuples_with_leading_string_are_interpreted_as_defaults():
+    v1 = ('a',)
+    v2 = ('b', 2)
+    v3 = ('c', 3, 4)
+    v4 = (1, 2)
+
+    class TupleTest(DocTest):
+        attr1 = v1
+        attr2 = v2
+        attr3 = v3
+        attr4 = v4
+
+    eq_(TupleTest.attr1, v1)
+    eq_(TupleTest.attr2, 'b')
+    eq_(TupleTest.attr3, v3)
+    eq_(TupleTest.attr4, v4)
+    d = TupleTest()
+    eq_(d.attr1, v1)
+    eq_(d.attr2, 2)
+    eq_(d.attr3, v3)
+    eq_(d.attr4, v4)
+
 

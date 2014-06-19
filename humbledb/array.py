@@ -106,7 +106,8 @@ class Array(object):
 
     @property
     def _id_regex(self):
-        return {'$regex': '^' + self._id}
+        _id = self._id.replace('.', '\.')
+        return {'$regex': '^' + _id}
 
     def new_page(self, page_number):
         """

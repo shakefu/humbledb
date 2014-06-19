@@ -1,8 +1,9 @@
 import random
 
-from test.util import *
 from humbledb import Document
 from humbledb.array import Array
+from test.util import (database_name, DBTest, ok_, eq_, enable_sharding,
+        SkipTest, raises)
 
 
 class TestArray(Array):
@@ -367,6 +368,7 @@ def test_all_returns_unmapped_entries():
     with DBTest:
         for i in xrange(3):
             t.append({str(i): i})
+
         for o in t.all():
             eq_(type(o), dict)
 
@@ -384,4 +386,16 @@ def test_iteration():
             for e in page:
                 l.remove(e)
         eq_(l, set())
+
+
+def test_array_regex_ignores_dots():
+    t = TestArray('with.dot')
+    t2 = TestArray('with_dot')
+
+    with DBTest:
+        t.append(1)
+        t2.append(2)
+
+        eq_(t.all(), [1])
+        eq_(t2.all(), [2])
 

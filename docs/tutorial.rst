@@ -308,7 +308,7 @@ persisted with the document.
 
           attr = 'a'  # Regular mapping
 
-          # Any non-callable as the second value decalres an unpersisted default
+          # Any non-callable as the second item is used as a default value
           truth = 't', False
           number = 'u', 1
           name = 'n', "humble"

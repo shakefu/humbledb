@@ -104,7 +104,7 @@ the current value of that key::
 
    >>> with Mongo:
    ...     doc = HumbleDoc.find_one()
-   ...     
+   ...
    >>> doc.description
    u'A humble example'
    >>> doc.value
@@ -167,7 +167,7 @@ and will raise a :py:exc:`AttributeError`::
 Working with Documents
 ======================
 
-Document subclasses provide a clean attribute oriented interface to your 
+Document subclasses provide a clean attribute oriented interface to your
 collection's documents, but at their heart, they're just dictionaries. The only
 required attributes on a document are
 :attr:`~humbledb.document.Document.config_database`, and
@@ -232,7 +232,7 @@ When a document is inserted, its ``_id`` attribute is set to the created
        config_database = 'humble'
        config_collection = 'mydoc'
 
-       # Keys are mapped to attributes 
+       # Keys are mapped to attributes
        my_attribute = 'my_key'
 
        # Private names are ignored
@@ -250,7 +250,7 @@ When a document is inserted, its ``_id`` attribute is set to the created
       # Attribute deletion works like normal too
       del doc.my_attribute
 
-   # You can explicitly check if you expect to assign values which also 
+   # You can explicitly check if you expect to assign values which also
    # evaluate to False
    if doc.my_attribute == {}:
       doc.my_attribute = 'Hello World'
@@ -364,7 +364,9 @@ declaration when declaring default values.
        title = 't'  # Normal attribute
        author = 'a'  # Still normal
 
-       public = 'p', False  # Default value
+       public = 'p', False  # Default value that is not saved automatically
+
+       created = 'c', datetime.now  # This will be saved to the document
 
 
    # Create a post
@@ -376,6 +378,10 @@ declaration when declaring default values.
    # attribute
    post.public  # False
 
+   # After the first access, the persisted default is called and the returned
+   # value is stored in the document and will be consistent from then on
+   post.created  # datetime(2014, 2, 14, 6, 59, 0)
+
    # But it isn't part of the document itself, so dict key access will raise a
    # KeyError
    post[BlogPost.public]  # KeyError
@@ -386,8 +392,9 @@ declaration when declaring default values.
        _id = BlogPost.save(post)
        post = BlogPost.find_one(_id)
 
-   # The default value is not stored with the document
-   post  # BlogPost({'_id': ObjectId(), 't': "A post", 'a': "HumbleDB"})
+   # The unpersisted default value is not stored with the document
+   post  # BlogPost({'_id': ObjectId(), 't': "A post", 'a': "HumbleDB",
+         #         'c': datetime(2014, 2, 14, 6, 59, 0)})
 
    # But it's still available on the document object
    post.public  # False
@@ -398,7 +405,7 @@ declaration when declaring default values.
        BlogPost.save(post)
 
    post  #  BlogPost({'_id': ObjectId(), 't': "A post", 'a': "HumbleDB",
-         #         'p': True})
+         #         'p': True, 'c': datetime(2014, 2, 14, 6, 59, 0)})
 
 
 .. rubric:: Example: decalring a persisted default
@@ -517,7 +524,7 @@ available as the attribute `key`.
    doc.embedded_doc.my_attribute     # "A Fish"
    doc.embedded_doc.nested_doc.value # 42
    doc.embedded_doc.nested_doc       # {'nested_key': {'val': 42}}
-   doc.embedded_doc                  # {'embed_key': {'my_key': "A Fish", 
+   doc.embedded_doc                  # {'embed_key': {'my_key': "A Fish",
                                      #     'nested_key': {'val: 42}}}
 
 .. rubric:: Example: A BlogPost class with embedded document
@@ -632,7 +639,7 @@ querying for list values is straight-forward.
    # Find a roster containing a given student
    with Mongo:
       roster = Roster.find_one({Roster.students.name: "Bart Simpson"})
-      
+
    # Find all rosters where at least one student has an F
    with Mongo:
       rosters = Roster.find({Roster.students.grade: "F"})
@@ -666,7 +673,7 @@ Here's a listing of all those methods as of :py:mod:`pymongo` 2.4:
 :py:meth:`~pymongo.collection.Collection.drop_index`    :py:meth:`~pymongo.collection.Collection.inline_map_reduce`      :py:meth:`~pymongo.collection.Collection.set_lasterror_options`
 :py:meth:`~pymongo.collection.Collection.drop_indexes`  :py:meth:`~pymongo.collection.Collection.insert`                 :py:meth:`~pymongo.collection.Collection.unset_lasterror_options`
 :py:meth:`~pymongo.collection.Collection.ensure_index`  :py:meth:`~pymongo.collection.Collection.map_reduce`             :py:meth:`~pymongo.collection.Collection.update`
-:py:meth:`~pymongo.collection.Collection.find`          
+:py:meth:`~pymongo.collection.Collection.find`
 ======================================================  ===============================================================  =================================================================
 
 .. rubric:: Example: A blog post document
@@ -777,7 +784,7 @@ the convenience and readability of using attributes instead of string keys.
 
 .. rubric:: Removing documents
 
-Removing works just like removing in Pymongo, but with the convenience of 
+Removing works just like removing in Pymongo, but with the convenience of
 using attributes rather than string keys. It's strongly recommended that you
 only use the ``_id`` key when removing items to prevent accidental removal.
 
@@ -850,7 +857,7 @@ Configuring Connections
 The :class:`~humbledb.mongo.Mongo` class provides a default connection for you,
 but what do you do if you need to connect to a different host, port, or a
 replica set? You can subclass Mongo to change your settings to whatever you
-need. 
+need.
 
 Mongo subclasses are used as context managers, just like Mongo. Different
 Mongo subclasses can be nested within one another, should your code require it,
@@ -864,7 +871,7 @@ however you cannot nest a connection within itself (this will raise a
 * **config_replica** (``str``, optional) - Name of the replica set.
 
 If ``config_replica`` is present on the class, then HumbleDB will automatically
-use a :class:`~pymongo.connection.ReplicaSetConnection` for you. (Requires 
+use a :class:`~pymongo.connection.ReplicaSetConnection` for you. (Requires
 ``pymongo >= 2.1``.)
 
 .. rubric:: Global Connection Settings
@@ -942,7 +949,7 @@ unique events that happen with a regular frequency. For example, hits to a
 certain webpage, or offer signups.
 
 In cases where the event data is sparse, diverse, or has many parameters, other
-aggregation approaches may work better. 
+aggregation approaches may work better.
 
 :note: The documentation on reports is incomplete, and a work in progress.
        Please see the :doc:`api` for more information. If you
@@ -954,7 +961,7 @@ aggregation approaches may work better.
    compatible, but much more useful and efficient. It's highly recommended that
    you migrate old reports to the new classes.
 
-.. rubric:: Example: 
+.. rubric:: Example:
 
 ::
 
@@ -965,7 +972,7 @@ aggregation approaches may work better.
        This is an example of a class used to record hits to pages.
 
        This class creates one document per page per month
-       
+
        This class records the total hits per page per month, as well as the
        hits per page per hour for each hour in the month.
 
@@ -1039,7 +1046,7 @@ maximum array size for any single document.
                'comment': "I really like arrays.",
                'timestamp': datetime.now(),
                })
-       
+
        comments.pages()  # Return the current number of pages
 
        comments.length()  # Return the current number of entries

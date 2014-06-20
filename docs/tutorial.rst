@@ -276,6 +276,134 @@ When a document is inserted, its ``_id`` attribute is set to the created
    doc._id # ObjectId(...)
 
 
+Giving Documents Default Values
+-------------------------------
+
+Sometimes it's useful to allow a document to provide a default value for a
+missing key. HumbleDB provides a convenient syntax for specifying both
+persisted and unpersisted default values.
+
+.. versionadded:: 5.2.0
+
+Both persisted and unpersisted values are declared by assigning a 2-tuple to an
+attribute where the first item is a string document key, and the second item is
+a default value.
+
+If the second item is a callable, then that indicates that the value
+should be persisted. It will be called once on first access or first save and
+persisted with the document.
+
+* ``attr = 'key', value`` - If ``value`` is not callable, provide an
+  unpersisted default value, which is available through attribute access only,
+  and not part of the document.
+
+  **Examples**:
+
+  .. code-block:: python
+     :emphasize-lines: 7
+
+      class MyDoc(Document):
+          config_database = 'humble'
+          config_collection = 'docs'
+
+          attr = 'a'  # Regular mapping
+
+          # Any non-callable as the second value decalres an unpersisted default
+          truth = 't', False
+          number = 'u', 1
+          name = 'n', "humble"
+
+          # Any expression may be used to declare an unpersisted default
+          some_value = 'v', func()  # Where func() returns a non-callable
+          one_day = 'd', 60*60*24
+
+* ``attr = 'key', default`` - Where ``default`` is a callable, provide a
+  persisted default value, which will become part of the document the first
+  time it's accessed via attribute or inserted or saved. Updates do not trigger
+  default values.
+
+  **Examples**:
+
+  .. code-block:: python
+     :emphasize-lines: 12,17,21
+
+      class MyDoc(Document):
+          config_database = 'humble'
+          config_collection = 'docs'
+
+          attr = 'a'  # Regular mapping
+
+          # A callable makes this a persisted default - as soon as it's
+          # accessed, it is assigned to the doc, or when saved or inserted
+
+          # Here, my_func() will be called without arguments to provide a
+          # default value which will be saved with the document
+          my_value = 'v', my_func
+
+          # Here, uuid.uuid4() will be called - note the lack of parens, we're
+          # not calling it (which would return a value) - we're providing the
+          # function itself
+          uid = 'u', uuid.uuid4
+
+          # Here, the datetime.now() function will be called on save which is
+          # a convenient way to provide a creation timestamp
+          created = 'c', datetime.now
+
+
+By convention, HumbleDB uses the no-parentheses form of tuple
+declaration when declaring default values.
+
+.. rubric:: Example: Declaring default values for keys
+
+::
+
+   class BlogPost(Document):
+       config_database = 'humble'
+       config_collection = 'posts'
+
+       title = 't'  # Normal attribute
+       author = 'a'  # Still normal
+
+       public = 'p', False  # Default value
+
+
+   # Create a post
+   post = BlogPost()
+   post.title = "A post"
+   post.author = "HumbleDB"
+
+   # The default value is provided on the document object when accessed via an
+   # attribute
+   post.public  # False
+
+   # But it isn't part of the document itself, so dict key access will raise a
+   # KeyError
+   post[BlogPost.public]  # KeyError
+   post['p']  # KeyError
+
+   # Save the post and reload it
+   with Mongo:
+       _id = BlogPost.save(post)
+       post = BlogPost.find_one(_id)
+
+   # The default value is not stored with the document
+   post  # BlogPost({'_id': ObjectId(), 't': "A post", 'a': "HumbleDB"})
+
+   # But it's still available on the document object
+   post.public  # False
+
+   # Once modified, the value will be saved and retrieved like normal
+   post.public = True
+   with Mongo:
+       BlogPost.save(post)
+
+   post  #  BlogPost({'_id': ObjectId(), 't': "A post", 'a': "HumbleDB",
+         #         'p': True})
+
+
+.. rubric:: Example: decalring a persisted default
+
+
 Introspecting Documents
 -----------------------
 

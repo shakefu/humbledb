@@ -70,6 +70,6 @@ See LICENSE.rst.
 Contributors
 ------------
 
-* `shakefu <https://github.com/shakefu>`_
+* `shakefu <https://github.com/shakefu>`_ (Creator, Maintainer)
 * `paulnues <https://github.com/paulnues>`_
 

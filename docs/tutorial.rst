@@ -275,6 +275,7 @@ When a document is inserted, its ``_id`` attribute is set to the created
 
    doc._id # ObjectId(...)
 
+.. _default-values:
 
 Giving Documents Default Values
 -------------------------------

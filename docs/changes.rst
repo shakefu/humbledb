@@ -10,8 +10,7 @@ This section contains all the changes that I can remember, by version.
 -----
 
 - :class:`~humbledb.document.Document` declarations can now include default
-  values. See the `documentation <default-values>`_ on default values for more
-  details.
+  values. See :ref:`default-values`_ for more details.
 - :class:`~humbledb.array.Array` regexes now escape periods to prevent name
   collisions.
 

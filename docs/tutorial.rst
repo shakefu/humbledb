@@ -294,6 +294,13 @@ If the second item is a callable, then that indicates that the value
 should be persisted. It will be called once on first access or first save and
 persisted with the document.
 
+By convention, HumbleDB uses the no-parentheses form of tuple
+declaration when declaring default values.
+
+Lastly, when serializing to JSON via the
+:meth:`~humbledb.document.Document.for_json` method, the default values will be
+inserted into the resulting JSON.
+
 * ``attr = 'key', value`` - If ``value`` is not callable, provide an
   unpersisted default value, which is available through attribute access only,
   and not part of the document.
@@ -349,10 +356,6 @@ persisted with the document.
           # Here, the datetime.now() function will be called on save which is
           # a convenient way to provide a creation timestamp
           created = 'c', datetime.now
-
-
-By convention, HumbleDB uses the no-parentheses form of tuple
-declaration when declaring default values.
 
 .. rubric:: Example: Declaring default values for keys
 

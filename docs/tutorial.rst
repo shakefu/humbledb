@@ -378,14 +378,16 @@ declaration when declaring default values.
    # attribute
    post.public  # False
 
-   # After the first access, the persisted default is called and the returned
-   # value is stored in the document and will be consistent from then on
-   post.created  # datetime(2014, 2, 14, 6, 59, 0)
-
    # But it isn't part of the document itself, so dict key access will raise a
    # KeyError
    post[BlogPost.public]  # KeyError
    post['p']  # KeyError
+
+   # After the first access, the persisted default is called and the returned
+   # value is stored in the document and will be consistent from then on
+   post.created  # datetime(2014, 2, 14, 6, 59, 0)
+
+   # Saving the post would also call the persisted default and store the value
 
    # Save the post and reload it
    with Mongo:

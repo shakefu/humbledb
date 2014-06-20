@@ -414,9 +414,6 @@ inserted into the resulting JSON.
          #         'p': True, 'c': datetime(2014, 2, 14, 6, 59, 0)})
 
 
-.. rubric:: Example: decalring a persisted default
-
-
 Introspecting Documents
 -----------------------
 

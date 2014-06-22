@@ -45,7 +45,12 @@ class ByHour(Report):
 
 
 def teardown():
-    DBTest.connection.drop_database(database_name())
+    DBTest.connection[database_name()].drop_collection('prealloc')
+    DBTest.connection[database_name()].drop_collection('report.year')
+    DBTest.connection[database_name()].drop_collection('report.month')
+    DBTest.connection[database_name()].drop_collection('report.day')
+    DBTest.connection[database_name()].drop_collection('report.sum')
+    DBTest.connection[database_name()].drop_collection('report.by_hour')
 
 
 def test_update_clause_creates_dot_notated_clause():
@@ -367,6 +372,7 @@ def test_unspecified_start_year_index():
     with DBTest:
         ByHour.record(event, two_years_ago_stamp)
         eq_(ByHour.yearly(event)[:-1][diff], 1)
+
 
 def test_no_results():
     with DBTest:

@@ -1,14 +1,12 @@
 import mock
 import pyconfig
+import pymongo
+
 from unittest.case import SkipTest
 
 from ..util import *
 from humbledb import Mongo
 from humbledb import _version
-
-
-def teardown():
-    DBTest.connection.drop_database(database_name())
 
 
 def test_new():
@@ -21,10 +19,15 @@ def test_missing_config_host():
         config_port = 27017
 
 
-@raises(TypeError)
 def test_missing_config_port():
     class Test(Mongo):
         config_host = 'localhost'
+
+    eq_(Test.config_port, None)
+
+    # pymongo will default to use port 27017 if no port is given
+    with Test:
+        eq_(Test.connection.port, 27017)
 
 
 def test_reload():

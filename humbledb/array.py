@@ -33,6 +33,9 @@ class ArrayMeta(type):
                     member))
             # Move the config to the page
             page_dict[member] = cls_dict.pop(member)
+        # Add config_auth credentials to Page Document if available
+        if 'config_auth' in cls_dict:
+            page_dict['config_auth'] = cls_dict.pop('config_auth')
         # Create our page subclass and assign to cls._page
         cls_dict['_page'] = type(name + 'Page', (Page,), page_dict)
         # Return our new Array

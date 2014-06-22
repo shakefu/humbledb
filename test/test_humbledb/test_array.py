@@ -14,7 +14,7 @@ class TestArray(Array):
 
 
 def teardown():
-    DBTest.connection.drop_database(database_name())
+    DBTest.connection[database_name()].drop_collection('arrays')
 
 
 def _word():

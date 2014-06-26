@@ -1,6 +1,5 @@
 import logging
 import pyconfig
-import pymongo
 import nose.tools
 from unittest.case import SkipTest
 
@@ -23,8 +22,6 @@ __all__ = [
         'database_name',
         'DBTest',
         'enable_sharding',
-        'mongod_auth_enabled',
-        'auth_check',
         ]
 
 
@@ -40,18 +37,6 @@ is_instance_ = assert_is_instance
 def database_name():
     """ Return the test database name. """
     return pyconfig.get('humbledb.test.db.name', 'nose_humbledb')
-
-
-def mongod_auth_enabled():
-    """ Returns True if authentication is enabled on the mongod
-        we are connecting to. """
-    try:
-        conn = pymongo.Connection()
-        conn[database_name()].auth.count()
-        return False
-    except pymongo.errors.OperationFailure, exc:
-        if 'not authorized' in exc.message:
-            return True
 
 
 def enable_sharding(collection, key):
@@ -85,19 +70,6 @@ class DBTest(Mongo):
     config_port = pyconfig.setting('humbledb.test.db.port', 27017)
 
 
-class DBAuthTest(Mongo):
-    config_host = pyconfig.setting('humbledb.test.db.host', 'localhost')
-    config_port = pyconfig.setting('humbledb.test.db.port', 27017)
-    # Mongod must have a user in the nose_humbledb database with this
-    # username and password in order for authentication tests to pass.
-    config_auth = 'authuser:pass1'
-
-
-if mongod_auth_enabled():
-    # Use DBAuthTest in place of DBTest and test the entire suite.
-    DBTest = DBAuthTest
-
-
 # This instantiates the connection and causes nose to crap out if there's no
 # database available, which is what we want
 try:
@@ -120,12 +92,5 @@ def assert_is(obj1, obj2):
     """ Assert an object is identical (same object). """
     assert obj1 is obj2, "{!r} is not {!r}".format(obj1, obj2)
 
-
 # Shortcut alias
 is_ = assert_is
-
-
-def auth_check():
-    """ Raises a SkipTest if mongod does not have authentication enabled. """
-    if not mongod_auth_enabled():
-        raise SkipTest

@@ -12,7 +12,7 @@ from humbledb.index import Index
 from humbledb.mongo import Mongo
 from humbledb.cursor import Cursor
 from humbledb.maps import DictMap, NameMap, ListMap
-from humbledb.errors import NoConnection, MissingConfig, InvalidAuth
+from humbledb.errors import NoConnection, MissingConfig
 
 COLLECTION_METHODS = set([_ for _ in dir(pymongo.collection.Collection) if not
     _.startswith('_') and callable(getattr(pymongo.collection.Collection, _))])
@@ -121,7 +121,7 @@ class DocumentMeta(type):
 
         # Attribute names that are configuration settings
         config_names = set(['config_database', 'config_collection',
-            'config_indexes', 'config_auth'])
+            'config_indexes'])
 
         # Attribute names that conflict with the dict base class
         bad_names = mcs._collection_methods | set(['clear', 'collection',
@@ -234,9 +234,6 @@ class DocumentMeta(type):
 
         # See if we're looking for a collection method
         if name in cls._collection_methods:
-            # Authenticate before attempting to connect to mongo.
-            cls.authenticate()
-
             value = getattr(cls.collection, name, None)
             if name in cls._wrapped_methods:
                 value = cls._wrap(value)
@@ -262,7 +259,7 @@ class DocumentMeta(type):
         if func.__name__ in cls._wrapped_doc_methods:
             @wraps(func)
             def doc_wrapper(*args, **kwargs):
-                """ Wrapper function to guarantee object typing and indexes. """
+                """ Wrapper function to gurantee object typing and indexes. """
                 cls._ensure_indexes()
                 doc = func(*args, **kwargs)
                 # If doc is not iterable (e.g. None), then this will error
@@ -290,12 +287,7 @@ class DocumentMeta(type):
         return cursor_wrapper
 
     # Create an update property which will work with mocks in testing
-    def _get_update(cls):
-        if cls._update:
-            return cls._update
-        cls._authenticate()
-        return cls.collection.update
-
+    def _get_update(cls): return cls._update or cls.collection.update
     def _set_update(cls, value): cls._update = value
     def _del_update(cls): cls._update = None
     update = property(_get_update, _set_update, _del_update)
@@ -325,7 +317,6 @@ class DocumentMeta(type):
         if args and kwargs.get('manipulate', True):
             cls._ensure_saved_defaults(args[0])
 
-        cls.authenticate()
         return cls.collection.save(*args, **kwargs)
 
     def insert(cls, *args, **kwargs):
@@ -351,7 +342,6 @@ class DocumentMeta(type):
                 for doc in doc_or_docs:
                     cls._ensure_saved_defaults(doc)
 
-        cls.authenticate()
         return cls.collection.insert(*args, **kwargs)
 
     def _ensure_saved_defaults(cls, doc):
@@ -375,7 +365,6 @@ class Document(dict):
             class BlogPost(Document):
                 config_database = 'db'
                 config_collection = 'example'
-                config_auth = 'user:pass'  # optional auth credentials
 
                 meta = Embed('m')
                 meta.tags = 't'
@@ -398,10 +387,6 @@ class Document(dict):
     """ Collection name for this document. """
     config_indexes = None
     """ Indexes for this document. """
-    config_auth = None
-    """ Optional authentication credentials to use to connect to the database.
-        .. versionadded: 6.0.0
-    """
 
     def __repr__(self):
         return "{}({})".format(
@@ -549,7 +534,6 @@ class Document(dict):
             return
 
         if cls.config_indexes:
-            cls.authenticate()
             for index in cls.config_indexes:
                 logging.getLogger(__name__).info("Ensuring index: {}"
                         .format(index))
@@ -575,23 +559,3 @@ class Document(dict):
                 """
                 cls._ensured = False
 
-    @classmethod
-    def authenticate(cls):
-        """ Authenticates wrapped document collection calls.
-            .. versionadded: 6.0.0
-        """
-        if not Mongo.context:
-            raise NoConnection("Need connection to authenticate.")
-
-        username = None
-        password = None
-        if cls.config_auth:
-            try:
-                username, password = pymongo.uri_parser.parse_userinfo(
-                        cls.config_auth)
-            except pymongo.errors.InvalidURI:
-                raise InvalidAuth('Invalid config_auth')
-
-        # Delegate authentication to HumbleDB connection class.
-        Mongo.context.authenticate(cls.config_database, username=username,
-                password=password)

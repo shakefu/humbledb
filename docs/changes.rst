@@ -6,9 +6,11 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
-6.0.0
+5.2.0
 -----
 
+- :class:`~humbledb.document.Document` declarations can now include default
+  values. See :ref:`default-values` for more details.
 - :class:`~humbledb.array.Array` regexes now escape periods to prevent name
   collisions.
 

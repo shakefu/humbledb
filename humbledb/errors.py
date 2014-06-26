@@ -9,11 +9,7 @@ class NestedConnection(RuntimeError):
 
 
 class MissingConfig(RuntimeError):
-    """ Raised when configuration is not configured correctly at runtime. """
-
-
-class InvalidAuth(RuntimeError):
-    """ Raised when a connection fails to authenticate to a database. """
+    """ Raised when configuartion is not configured correctly at runtime. """
 
 
 def _import_pymongo_errors():

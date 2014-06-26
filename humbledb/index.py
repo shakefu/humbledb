@@ -44,10 +44,6 @@ class Index(object):
         # Map the attribute name to its key name, or just let it ride
         index = self._resolve_index(cls)
 
-        # Authenticate if necessary as ensure_index fails when called outside
-        # of the Mongo context manager's bounds.
-        cls.authenticate()
-
         # Make the ensure index call
         cls.collection.ensure_index(index, **self.kwargs)
 

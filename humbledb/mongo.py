@@ -8,7 +8,7 @@ import pyconfig
 from pytool.lang import classproperty, UNSET
 
 from humbledb import _version
-from humbledb.errors import (NestedConnection, MissingConfig, InvalidAuth)
+from humbledb.errors import NestedConnection
 
 
 __all__ = [
@@ -21,8 +21,6 @@ class MongoMeta(type):
 
     """
     _connection = None
-    _credentials = None
-    """ Auth credentials if given. """
 
     def __new__(mcs, name, bases, cls_dict):
         """ Return the Mongo class. """
@@ -70,14 +68,8 @@ class MongoMeta(type):
         if 'config_host' not in cls_dict or cls_dict['config_host'] is None:
             raise TypeError("missing required 'config_host'")
 
-        # Validate that config_auth is acceptable
-        _config_auth = cls_dict.get('config_auth', None)
-        if _config_auth:
-            try:
-                cls_dict['_credentials'] = pymongo.uri_parser.parse_userinfo(
-                        str(_config_auth))
-            except pymongo.errors.InvalidURI:
-                raise TypeError("Invalid 'config_auth' value.")
+        if 'config_port' not in cls_dict or cls_dict['config_port'] is None:
+            raise TypeError("missing required 'config_port'")
 
         # Create new class
         cls = type.__new__(mcs, name, bases, cls_dict)
@@ -121,38 +113,6 @@ class MongoMeta(type):
             cls._connection.disconnect()
         cls._connection = cls._new_connection()
 
-    def authenticate(cls, database, username=None, password=None):
-        """ Delegates authentication to be the responsibility of the
-            context manager.
-            .. versionadded: 6.0.0
-        """
-        # Having no credentials makes this call a noop.
-        if not cls.config_auth:
-            return
-
-        # Use Mongo class config_auth as defaults if no credentials are
-        # passed in.
-        if not username or not password:
-            username, password = cls._credentials
-
-        if _version._lt('2.5'):
-            valid = cls.connection[database].authenticate(username,
-                    password)
-            if not valid:
-                raise InvalidAuth("Invalid database credentials.")
-        else:
-            try:
-                cls.connection[database].authenticate(username, password)
-            except pymongo.errors.PyMongoError:
-                raise InvalidAuth("Invalid database credentials.")
-
-    def logout(cls, database):
-        """ Explicitly deauthorizes the connection client from the database.
-            .. versionadded: 6.0.0
-        """
-        if cls._connection:
-            cls._connection[database].logout()
-
     def __enter__(cls):
         cls.start()
 
@@ -182,7 +142,6 @@ class Mongo(object):
         class MyConnection(Mongo):
             config_host = 'cluster1.mongo.mydomain.com'
             config_port = 27017
-            config_auth = 'user:passwd' # Optional authentication.
 
     Example usage::
 
@@ -196,18 +155,8 @@ class Mongo(object):
     config_host = 'localhost'
     """ The host name or address to connect to. """
 
-    config_port = None
-    """ Optional default port to use if a port is not given. """
-
-    config_auth = None
-    """ Optional default authentication value to be for all connections
-        to the database if overriding credentials are not found in the
-        :class:`~humbledb.document.Document` config_auth attribute.
-
-        Authentication uses MONGODB-CR.
-
-        .. versionadded: 6.0.0
-    """
+    config_port = 27017
+    """ The port to connect to. """
 
     config_replica = None
     """ If you're connecting to a replica set, this holds its name. """
@@ -248,26 +197,21 @@ class Mongo(object):
         """ Return a new connection to this class' database. """
         kwargs = {
                 'host': cls.config_host,
+                'port': cls.config_port,
                 'max_pool_size': cls.config_max_pool_size,
                 'auto_start_request': cls.config_auto_start_request,
                 'use_greenlets': cls.config_use_greenlets,
                 'tz_aware': cls.config_tz_aware,
                 'w': cls.config_write_concern,
                 }
-        if cls.config_port:
-            kwargs['port'] = cls.config_port
-
         if cls.config_replica:
             kwargs['replicaSet'] = cls.config_replica
             logging.getLogger(__name__).info("Creating new MongoDB connection "
                     "to '{}:{}' replica: {}".format(cls.config_host,
                         cls.config_port, cls.config_replica))
         else:
-            db_location = '{}:{}'.format(cls.config_port,
-                    cls.config_host) if cls.config_port else '{}'.format(
-                            cls.config_host)
             logging.getLogger(__name__).info("Creating new MongoDB connection "
-                "to '{}'".format(db_location))
+                "to '{}:{}'".format(cls.config_host, cls.config_port))
 
         return cls.config_connection_cls(**kwargs)
 

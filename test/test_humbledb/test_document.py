@@ -8,8 +8,7 @@ from ..util import eq_, ok_, raises, DBTest, database_name
 
 
 def teardown():
-    DBTest.connection[database_name()].drop_collection('test')
-    DBTest.connection[database_name()].drop_collection('potato')
+    DBTest.connection.drop_database(database_name())
 
 
 def cache_for(val):
@@ -587,7 +586,7 @@ def test_list_subdocuments_should_be_regular_dicts():
     l = ListTest()
     vals = [{'a': {'test': True}, 'b': 2}]
     # Insert the instance
-    with DBTest:
+    with Mongo:
         l_id = ListTest.insert(l)
         # Set the list
         ListTest.update({ListTest._id: l_id}, {'$set': {ListTest.vals: vals}})

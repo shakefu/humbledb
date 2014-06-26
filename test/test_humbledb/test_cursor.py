@@ -8,7 +8,7 @@ from humbledb.cursor import Cursor
 
 
 def teardown():
-    DBTest.connection[database_name()].drop_collection('test')
+    DBTest.connection.drop_database(database_name())
 
 
 class DocTest(Document):

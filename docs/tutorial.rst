@@ -104,7 +104,7 @@ the current value of that key::
 
    >>> with Mongo:
    ...     doc = HumbleDoc.find_one()
-   ...     
+   ...
    >>> doc.description
    u'A humble example'
    >>> doc.value
@@ -167,7 +167,7 @@ and will raise a :py:exc:`AttributeError`::
 Working with Documents
 ======================
 
-Document subclasses provide a clean attribute oriented interface to your 
+Document subclasses provide a clean attribute oriented interface to your
 collection's documents, but at their heart, they're just dictionaries. The only
 required attributes on a document are
 :attr:`~humbledb.document.Document.config_database`, and
@@ -232,7 +232,7 @@ When a document is inserted, its ``_id`` attribute is set to the created
        config_database = 'humble'
        config_collection = 'mydoc'
 
-       # Keys are mapped to attributes 
+       # Keys are mapped to attributes
        my_attribute = 'my_key'
 
        # Private names are ignored
@@ -250,7 +250,7 @@ When a document is inserted, its ``_id`` attribute is set to the created
       # Attribute deletion works like normal too
       del doc.my_attribute
 
-   # You can explicitly check if you expect to assign values which also 
+   # You can explicitly check if you expect to assign values which also
    # evaluate to False
    if doc.my_attribute == {}:
       doc.my_attribute = 'Hello World'
@@ -274,6 +274,144 @@ When a document is inserted, its ``_id`` attribute is set to the created
          MyDoc.insert(doc)
 
    doc._id # ObjectId(...)
+
+.. _default-values:
+
+Giving Documents Default Values
+-------------------------------
+
+Sometimes it's useful to allow a document to provide a default value for a
+missing key. HumbleDB provides a convenient syntax for specifying both
+persisted and unpersisted default values.
+
+.. versionadded:: 5.2.0
+
+Both persisted and unpersisted values are declared by assigning a 2-tuple to an
+attribute where the first item is a string document key, and the second item is
+a default value.
+
+If the second item is a callable, then that indicates that the value
+should be persisted. It will be called once on first access or first save and
+persisted with the document.
+
+By convention, HumbleDB uses the no-parentheses form of tuple
+declaration when declaring default values.
+
+Lastly, when serializing to JSON via the
+:meth:`~humbledb.document.Document.for_json` method, the default values will be
+inserted into the resulting JSON.
+
+* ``attr = 'key', value`` - If ``value`` is not callable, provide an
+  unpersisted default value, which is available through attribute access only,
+  and not part of the document.
+
+  **Examples**:
+
+  .. code-block:: python
+     :emphasize-lines: 7
+
+      class MyDoc(Document):
+          config_database = 'humble'
+          config_collection = 'docs'
+
+          attr = 'a'  # Regular mapping
+
+          # Any non-callable as the second item is used as a default value
+          truth = 't', False
+          number = 'u', 1
+          name = 'n', "humble"
+
+          # Any expression may be used to declare an unpersisted default
+          some_value = 'v', func()  # Where func() returns a non-callable
+          one_day = 'd', 60*60*24
+
+* ``attr = 'key', default`` - Where ``default`` is a callable, provide a
+  persisted default value, which will become part of the document the first
+  time it's accessed via attribute or inserted or saved. Updates do not trigger
+  default values.
+
+  **Examples**:
+
+  .. code-block:: python
+     :emphasize-lines: 12,17,21
+
+      class MyDoc(Document):
+          config_database = 'humble'
+          config_collection = 'docs'
+
+          attr = 'a'  # Regular mapping
+
+          # A callable makes this a persisted default - as soon as it's
+          # accessed, it is assigned to the doc, or when saved or inserted
+
+          # Here, my_func() will be called without arguments to provide a
+          # default value which will be saved with the document
+          my_value = 'v', my_func
+
+          # Here, uuid.uuid4() will be called - note the lack of parens, we're
+          # not calling it (which would return a value) - we're providing the
+          # function itself
+          uid = 'u', uuid.uuid4
+
+          # Here, the datetime.now() function will be called on save which is
+          # a convenient way to provide a creation timestamp
+          created = 'c', datetime.now
+
+.. rubric:: Example: Declaring default values for keys
+
+::
+
+   class BlogPost(Document):
+       config_database = 'humble'
+       config_collection = 'posts'
+
+       title = 't'  # Normal attribute
+       author = 'a'  # Still normal
+
+       public = 'p', False  # Default value that is not saved automatically
+
+       created = 'c', datetime.now  # This will be saved to the document
+
+
+   # Create a post
+   post = BlogPost()
+   post.title = "A post"
+   post.author = "HumbleDB"
+
+   # The default value is provided on the document object when accessed via an
+   # attribute
+   post.public  # False
+
+   # But it isn't part of the document itself, so dict key access will raise a
+   # KeyError
+   post[BlogPost.public]  # KeyError
+   post['p']  # KeyError
+
+   # After the first access, the persisted default is called and the returned
+   # value is stored in the document and will be consistent from then on
+   post.created  # datetime(2014, 2, 14, 6, 59, 0)
+
+   # Saving the post would also call the persisted default and store the value
+
+   # Save the post and reload it
+   with Mongo:
+       _id = BlogPost.save(post)
+       post = BlogPost.find_one(_id)
+
+   # The unpersisted default value is not stored with the document
+   post  # BlogPost({'_id': ObjectId(), 't': "A post", 'a': "HumbleDB",
+         #         'c': datetime(2014, 2, 14, 6, 59, 0)})
+
+   # But it's still available on the document object
+   post.public  # False
+
+   # Once modified, the value will be saved and retrieved like normal
+   post.public = True
+   with Mongo:
+       BlogPost.save(post)
+
+   post  #  BlogPost({'_id': ObjectId(), 't': "A post", 'a': "HumbleDB",
+         #         'p': True, 'c': datetime(2014, 2, 14, 6, 59, 0)})
 
 
 Introspecting Documents
@@ -310,34 +448,6 @@ excluding the ``_id`` key/attribute.
    for key in MyDoc.mapped_keys():
        if key in some_dict:
            doc[key] = some_dict[key]
-
-.. _overriding-authentication:
-
-Overriding Authentication
--------------------------
-
-Because each document is assigned to a specific database using the
-`config_database` attribute, you may have the situation where a database
-has its own specific credentials.  In this case, you may override the
-credentials of the :class:`~humbledb.mongo.Mongo` class by giving
-the document its own credentials using the `config_auth` attribute.
-
-.. rubric:: Example: Setting up a document with specific
-    authentication parameters
-
-::
-
-   class AuthedDoc(Document):
-       config_database = 'authed_humble'
-       config_collection = 'authdoc'
-       config_auth = 'anotheruser:supersecret'
-
-       value = 'v'
-
-    with AuthedDB:
-       some_doc = AuthedDoc.find({AuthedDoc.value: 'foo'})
-
-.. versionadded:: 5.2.0
 
 .. _embedding-documents:
 
@@ -417,7 +527,7 @@ available as the attribute `key`.
    doc.embedded_doc.my_attribute     # "A Fish"
    doc.embedded_doc.nested_doc.value # 42
    doc.embedded_doc.nested_doc       # {'nested_key': {'val': 42}}
-   doc.embedded_doc                  # {'embed_key': {'my_key': "A Fish", 
+   doc.embedded_doc                  # {'embed_key': {'my_key': "A Fish",
                                      #     'nested_key': {'val: 42}}}
 
 .. rubric:: Example: A BlogPost class with embedded document
@@ -532,7 +642,7 @@ querying for list values is straight-forward.
    # Find a roster containing a given student
    with Mongo:
       roster = Roster.find_one({Roster.students.name: "Bart Simpson"})
-      
+
    # Find all rosters where at least one student has an F
    with Mongo:
       rosters = Roster.find({Roster.students.grade: "F"})
@@ -566,7 +676,7 @@ Here's a listing of all those methods as of :py:mod:`pymongo` 2.4:
 :py:meth:`~pymongo.collection.Collection.drop_index`    :py:meth:`~pymongo.collection.Collection.inline_map_reduce`      :py:meth:`~pymongo.collection.Collection.set_lasterror_options`
 :py:meth:`~pymongo.collection.Collection.drop_indexes`  :py:meth:`~pymongo.collection.Collection.insert`                 :py:meth:`~pymongo.collection.Collection.unset_lasterror_options`
 :py:meth:`~pymongo.collection.Collection.ensure_index`  :py:meth:`~pymongo.collection.Collection.map_reduce`             :py:meth:`~pymongo.collection.Collection.update`
-:py:meth:`~pymongo.collection.Collection.find`          
+:py:meth:`~pymongo.collection.Collection.find`
 ======================================================  ===============================================================  =================================================================
 
 .. rubric:: Example: A blog post document
@@ -677,7 +787,7 @@ the convenience and readability of using attributes instead of string keys.
 
 .. rubric:: Removing documents
 
-Removing works just like removing in Pymongo, but with the convenience of 
+Removing works just like removing in Pymongo, but with the convenience of
 using attributes rather than string keys. It's strongly recommended that you
 only use the ``_id`` key when removing items to prevent accidental removal.
 
@@ -750,7 +860,7 @@ Configuring Connections
 The :class:`~humbledb.mongo.Mongo` class provides a default connection for you,
 but what do you do if you need to connect to a different host, port, or a
 replica set? You can subclass Mongo to change your settings to whatever you
-need. 
+need.
 
 Mongo subclasses are used as context managers, just like Mongo. Different
 Mongo subclasses can be nested within one another, should your code require it,
@@ -760,27 +870,12 @@ however you cannot nest a connection within itself (this will raise a
 .. rubric:: Connection Settings
 
 * **config_host** (``str``) - Hostname to connect to.
-* **config_port** (``int``, optional, default:``27017``) - Port to connect to.
-
-.. versionchanged:: 5.2.0
-
-`config_port` is now optional and will default to what
-:class:`~pymongo.connection.Connection` will use as default (port 27017).
-
+* **config_port** (``int``) - Port to connect to.
 * **config_replica** (``str``, optional) - Name of the replica set.
 
 If ``config_replica`` is present on the class, then HumbleDB will automatically
-use a :class:`~pymongo.connection.ReplicaSetConnection` for you. (Requires 
+use a :class:`~pymongo.connection.ReplicaSetConnection` for you. (Requires
 ``pymongo >= 2.1``.)
-
-* **config_auth** (``str``, optional) - Username and password.
-
-.. versionadded:: 5.2.0
-
-The `config_auth` string format is identical to how the username and password are
-found in a typical `MongoDB-URI
-<http://docs.mongodb.org/manual/reference/connection-string/>`_ style
-connection string format.
 
 .. rubric:: Global Connection Settings
 
@@ -788,9 +883,9 @@ These settings are available globally through Pyconfig_ configuration keys. Use
 either :func:`Pyconfig.set` (i.e. ``pyconfig.set('humbledb.connection_pool',
 20)`` or create a Pyconfig_ plugin to change these.
 
-* **humbledb.connection_pool** (``int``, default: ``10``) - Size of the
+* **humbledb.connection_pool** (``int``, default: ``300``) - Size of the
   connection pool to use.
-* **humbledb.allow_explicit_request** (``bool``, default: ``False``) - Whether
+* **humbledb.allow_explicit_request** (``bool``, default: ``True``) - Whether
   or not :meth:`~humbledb.mongo.Mongo.start` can be used to define a request,
   without using Mongo as a context manager.
 * **humbledb.auto_start_request** (``bool``, default: ``True``) - Whether to
@@ -822,11 +917,6 @@ your needs.
        config_port = 3002
        config_replica = 'RS1'
 
-   # A connection that uses Mongo-CR for basic authentication
-   class AuthedDB(Mongo):
-       config_host = 'anotherdb.example.com'
-       config_auth = 'someuser:secret'
-
    # Use your custom subclasses as context managers
    with MyDB:
        docs = MyDoc.find({MyDoc.value: {'$gt': 3}})
@@ -848,13 +938,6 @@ your needs.
                {'$push': {MyGroup.related: MyDoc._id},
                multi=True)
 
-    # A Mongo subclass with authentication credentials will try to
-    # authenticate when needed.
-    with AuthedDB:
-        # No additional authentication calls are necessary!
-        one_doc = AnotherDoc.find_one({AnotherDoc.value: 'a string'})
-
-
 .. _reports:
 
 Pre-aggregated Reports
@@ -869,7 +952,7 @@ unique events that happen with a regular frequency. For example, hits to a
 certain webpage, or offer signups.
 
 In cases where the event data is sparse, diverse, or has many parameters, other
-aggregation approaches may work better. 
+aggregation approaches may work better.
 
 :note: The documentation on reports is incomplete, and a work in progress.
        Please see the :doc:`api` for more information. If you
@@ -881,7 +964,7 @@ aggregation approaches may work better.
    compatible, but much more useful and efficient. It's highly recommended that
    you migrate old reports to the new classes.
 
-.. rubric:: Example: 
+.. rubric:: Example:
 
 ::
 
@@ -892,7 +975,7 @@ aggregation approaches may work better.
        This is an example of a class used to record hits to pages.
 
        This class creates one document per page per month
-       
+
        This class records the total hits per page per month, as well as the
        hits per page per hour for each hour in the month.
 
@@ -966,7 +1049,7 @@ maximum array size for any single document.
                'comment': "I really like arrays.",
                'timestamp': datetime.now(),
                })
-       
+
        comments.pages()  # Return the current number of pages
 
        comments.length()  # Return the current number of entries

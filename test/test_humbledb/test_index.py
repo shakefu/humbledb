@@ -7,7 +7,7 @@ from humbledb import Document, Embed, Index, _version
 
 
 def teardown():
-    DBTest.connection[database_name()].drop_collection('test')
+    DBTest.connection.drop_database(database_name())
 
 
 def cache_for(val):

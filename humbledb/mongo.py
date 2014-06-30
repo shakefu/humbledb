@@ -212,6 +212,13 @@ class Mongo(object):
                 'tz_aware': cls.config_tz_aware,
                 'w': cls.config_write_concern,
                 })
+
+        if _version._gte('2.1.0') and _version._lt('2.2.0'):
+            # This causes an error for the 2.1.x versions of Pymongo, so we
+            # remove it
+            kwargs.pop('auto_start_request')
+            kwargs.pop('use_greenlets')
+
         if cls.config_replica:
             kwargs['replicaSet'] = cls.config_replica
             logging.getLogger(__name__).info("Creating new MongoDB connection "

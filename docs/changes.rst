@@ -6,6 +6,12 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.4.0
+-----
+
+- Add helpers module and :func:`~humbledb.helpers.auto_increment` default value
+  helper.
+
 5.3.0
 -----
 

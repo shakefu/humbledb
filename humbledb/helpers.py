@@ -16,6 +16,37 @@ def auto_increment(database, collection, _id, field="value", increment=1):
     Factory method for creating a stored default value which is
     auto-incremented.
 
+    This uses a sidecar document to keep the increment counter sync'd
+    atomically. See the MongoDB `documentation
+    <http://docs.mongodb.org/manual/tutorial/create-an-auto-incrementing-field/>`_
+    for more information about how this works.
+
+    .. note::
+
+       If a `Document` subclass is inherited and has an auto_increment helper,
+       it will share the counter unless it's overriden in the inheriting
+       `Document`.
+
+    .. rubric:: Example: using auto_increment fields
+
+    .. code-block:: python
+
+       from humbledb.helpers import auto_increment
+
+       class MyDoc(Document):
+           config_database = 'humbledb'
+           config_collection = 'examples'
+
+           # The auto_increment helper needs arguments:
+           #     - database name: Database to store the sidecar document
+           #     - collection name: Collection name that stores the sidecar
+           #     - Id: A unique identifier for this document and field
+           auto_id = auto_increment('humbledb', 'counters', 'MyDoc_auto_id')
+
+           # The auto_increment helper can take an increment argument
+           big_auto = auto_increment('humbledb', 'counters', 'MyDoc_big_auto',
+                   increment=10)
+
     :param database: Database name
     :param collection: Collection name
     :param _id: Unique identifier for auto increment field

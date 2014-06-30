@@ -70,3 +70,10 @@ Arrays
 .. autoclass:: humbledb.array.Page
    :members:
 
+
+Helpers
+=======
+
+.. autofunction:: humbledb.helpers.auto_increment
+
+

@@ -17,6 +17,7 @@ This section contains all the changes that I can remember, by version.
   database, a :class:`~humbledb.errors.DatabaseMismatch` error will be raised.
 - Fix a bug where declaring :class:`~humbledb.mongo.Mongo` subclasses late (at
   runtime) would not correctly instantiate the connection instance.
+- Fix a bug with Pymongo 2.1.x connection instances.
 
 
 5.2.0

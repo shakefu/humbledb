@@ -15,6 +15,7 @@ __all__ = [
         'Mongo',
         ]
 
+
 class MongoMeta(type):
     """ Metaclass to allow :class:`Mongo` to be used as a context manager
         without having to instantiate it.
@@ -24,6 +25,10 @@ class MongoMeta(type):
 
     def __new__(mcs, name, bases, cls_dict):
         """ Return the Mongo class. """
+        # This ensures that a late-declared class does not inherit an existing
+        # connection object.
+        cls_dict['_connection'] = None
+
         # Choose the correct connection class
         if cls_dict.get('config_connection_cls', UNSET) is UNSET:
             # Are we using a replica?
@@ -64,12 +69,13 @@ class MongoMeta(type):
             cls_dict['_self'] = threading.local()
             return type.__new__(mcs, name, bases, cls_dict)
 
-        # Ensure we have minimum configuration params
-        if 'config_host' not in cls_dict or cls_dict['config_host'] is None:
-            raise TypeError("missing required 'config_host'")
+        if cls_dict.get('config_uri', UNSET) is UNSET:
+            # Ensure we have minimum configuration params
+            if cls_dict.get('config_host', UNSET) is UNSET:
+                raise TypeError("missing required 'config_host'")
 
-        if 'config_port' not in cls_dict or cls_dict['config_port'] is None:
-            raise TypeError("missing required 'config_port'")
+            if cls_dict.get('config_port', UNSET) is UNSET:
+                raise TypeError("missing required 'config_port'")
 
         # Create new class
         cls = type.__new__(mcs, name, bases, cls_dict)
@@ -152,6 +158,9 @@ class Mongo(object):
     __metaclass__ = MongoMeta
     _self = None
 
+    config_uri = UNSET
+    """ A MongoDB URI to connect to. """
+
     config_host = 'localhost'
     """ The host name or address to connect to. """
 
@@ -195,15 +204,14 @@ class Mongo(object):
     @classmethod
     def _new_connection(cls):
         """ Return a new connection to this class' database. """
-        kwargs = {
-                'host': cls.config_host,
-                'port': cls.config_port,
+        kwargs = cls._connection_info()
+        kwargs.update({
                 'max_pool_size': cls.config_max_pool_size,
                 'auto_start_request': cls.config_auto_start_request,
                 'use_greenlets': cls.config_use_greenlets,
                 'tz_aware': cls.config_tz_aware,
                 'w': cls.config_write_concern,
-                }
+                })
         if cls.config_replica:
             kwargs['replicaSet'] = cls.config_replica
             logging.getLogger(__name__).info("Creating new MongoDB connection "
@@ -214,6 +222,19 @@ class Mongo(object):
                 "to '{}:{}'".format(cls.config_host, cls.config_port))
 
         return cls.config_connection_cls(**kwargs)
+
+    @classmethod
+    def _connection_info(cls):
+        """
+        Return a dictionary containing the connection info based on
+        `config_host` and `config_port` or `config_uri`. If `config_uri` is
+        specified, it takes precedence.
+
+        """
+        if cls.config_uri:
+            return {'host': cls.config_uri}
+
+        return {'host': cls.config_host, 'port': cls.config_port}
 
     @classproperty
     def connection(cls):
@@ -240,5 +261,23 @@ class Mongo(object):
             return Mongo.contexts[-1]
         except IndexError:
             return None
+
+    @classproperty
+    def database(cls):
+        """
+        Return the default database for this connection.
+
+        .. versionadded:: 5.3.0
+
+        .. note:: This requires ``pymongo >= 2.6.0``.
+
+        """
+        if _version._lt('2.6.0'):
+            return None
+        try:
+            return cls.connection.get_default_database()
+        except pymongo.errors.ConfigurationError:
+            return None
+
 
 

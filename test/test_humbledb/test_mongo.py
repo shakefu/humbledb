@@ -2,9 +2,10 @@ import mock
 import pyconfig
 from unittest.case import SkipTest
 
-from ..util import *
 from humbledb import Mongo
 from humbledb import _version
+from humbledb.errors import DatabaseMismatch
+from ..util import database_name, eq_, DBTest, raises
 
 
 def teardown():
@@ -12,7 +13,7 @@ def teardown():
 
 
 def test_new():
-    assert_equal(DBTest, DBTest())
+    eq_(DBTest, DBTest())
 
 
 @raises(TypeError)
@@ -101,5 +102,42 @@ def test_reconnect():
 
     # Have to reconnect again to get real connection instance back
     DBTest.reconnect()
+
+
+def test_mongo_uri_with_database():
+    if _version._lt('2.6.0'):
+        raise SkipTest("Needs version 2.6.0 or later")
+
+    host = pyconfig.get('humbledb.test.db.host', 'localhost')
+    port = pyconfig.get('humbledb.test.db.port', 27017)
+    uri = 'mongodb://{}:{}/{}'.format(host, port, database_name())
+
+    class DBuri(Mongo):
+            config_uri = uri
+
+    with DBuri:
+        eq_(DBuri.database.name, database_name())
+        eq_(Mongo.context.database.name, database_name())
+
+
+@raises(DatabaseMismatch)
+def test_mongo_uri_database_with_conflict_raises_error():
+    if _version._lt('2.6.0'):
+        raise SkipTest("Needs version 2.6.0 or later")
+
+    host = pyconfig.get('humbledb.test.db.host', 'localhost')
+    port = pyconfig.get('humbledb.test.db.port', 27017)
+    uri = 'mongodb://{}:{}/{}'.format(host, port, database_name())
+
+    class DBuri(Mongo):
+            config_uri = uri
+
+    from humbledb import Document
+    class TestDoc(Document):
+        config_database = database_name() + '_is_different'
+        config_collection = 'test'
+
+    with DBuri:
+        TestDoc.find()
 
 

@@ -12,7 +12,7 @@ from humbledb.index import Index
 from humbledb.mongo import Mongo
 from humbledb.cursor import Cursor
 from humbledb.maps import DictMap, NameMap, ListMap
-from humbledb.errors import NoConnection, MissingConfig
+from humbledb.errors import NoConnection, MissingConfig, DatabaseMismatch
 
 COLLECTION_METHODS = set([_ for _ in dir(pymongo.collection.Collection) if not
     _.startswith('_') and callable(getattr(pymongo.collection.Collection, _))])
@@ -98,6 +98,10 @@ class CollectionAttribute(object):
             raise MissingConfig("Missing config_database or config_collection")
         # Only allow access to the collection in a Mongo context
         if Mongo.context:
+            db = Mongo.context.database
+            if db and db.name != database:
+                raise DatabaseMismatch("This document is configured for "
+                        "database %r, while the connection is using %r")
             return Mongo.context.connection[database][collection]
         raise NoConnection("'collection' unavailable without connection "
                 "context")

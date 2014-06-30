@@ -6,6 +6,19 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.3.0
+-----
+
+- Add :attr:`~humbledb.mongo.Mongo.config_uri` configuration option for
+  declaring default databases and databases with authentication.
+- If a :class:`~humbledb.mongo.Mongo` subclass specifies a
+  :attr:`~humbledb.mongo.Mongo.config_uri` which includes a database, and a
+  :class:`~humbledb.document.Document` is used which does not match the
+  database, a :class:`~humbledb.errors.DatabaseMismatch` error will be raised.
+- Fix a bug where declaring :class:`~humbledb.mongo.Mongo` subclasses late (at
+  runtime) would not correctly instantiate the connection instance.
+
+
 5.2.0
 -----
 

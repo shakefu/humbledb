@@ -12,6 +12,14 @@ class MissingConfig(RuntimeError):
     """ Raised when configuartion is not configured correctly at runtime. """
 
 
+class DatabaseMismatch(RuntimeError):
+    """
+    Raised when a user tries to use a document with a connection and the
+    databases don't match.
+
+    """
+
+
 def _import_pymongo_errors():
     """ Tries to add all the pymongo exceptions to this module's namespace. """
     import pymongo.errors

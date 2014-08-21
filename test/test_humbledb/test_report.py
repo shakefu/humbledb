@@ -4,8 +4,8 @@ import datetime
 import pytool
 from nose.tools import raises
 
-from ..util import *
 from humbledb import report
+from ..util import DBTest, database_name, eq_, ok_
 from humbledb.report import (Report, YEAR, MONTH, DAY, HOUR, MINUTE)
 
 
@@ -330,7 +330,7 @@ def test_report_query_end_index():
 
     event = 'event_report_query_end_index'
     with DBTest:
-        Daily.record(event, stamp)
+        Daily.record(event, stamp, safe=True)
         eq_(Daily.yearly(event)[last_year+1:this_year+1][-1], 1)
         eq_(Daily.monthly(event)[1:13][-1], 1)
 
@@ -345,6 +345,7 @@ def test_report_query_end_index():
 
     stamp = pytool.time.utcnow()
     stamp = stamp.replace(hour=23, minute=59, second=59)
+    event = 'event_report_query_end_index_daily_day'
     with DBTest:
         Daily.record(event, stamp)
         eq_(Daily.hourly(event)[0:24][-1], 1)
@@ -379,7 +380,7 @@ def test_year_index_out_of_range():
 
 
 @raises(IndexError)
-def test_year_index_out_of_range():
+def test_year_index_out_of_range_lower():
     ByHour.yearly[1969:]
 
 
@@ -419,7 +420,7 @@ def test_bad_index_type():
 
 
 @raises(TypeError)
-def test_bad_index_type():
+def test_bad_index_type_slice():
     Daily.per_minute['foo':]
 
 

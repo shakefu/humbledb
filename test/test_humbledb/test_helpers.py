@@ -9,7 +9,7 @@ from humbledb import _version
 from humbledb import Document, Mongo
 from humbledb.helpers import auto_increment
 from humbledb.errors import DatabaseMismatch, NoConnection
-from ..util import DBTest, database_name, eq_, raises, SkipTest
+from ..util import DBTest, database_name, eq_, ok_, raises, SkipTest
 
 
 SIDECAR = 'sidecars'
@@ -21,6 +21,25 @@ class MyDoc(Document):
 
     auto = 'a', auto_increment(database_name(), SIDECAR, 'MyDoc')
 
+class MyFloatCounterDoc(Document):
+    config_database = database_name()
+    config_collection = 'float_test'
+
+    auto = 'a', auto_increment(database_name(), SIDECAR, 'FloatDoc')
+
+class BigCounterDoc(Document):
+    config_database = database_name()
+    config_collection = 'big_doc'
+
+    auto = 'a', auto_increment(database_name(), SIDECAR,
+            'BigCounterDoc', increment=10)
+
+def setup():
+    # Set up a float counter in the sidecar collection.
+    import pymongo
+    conn = pymongo.MongoClient('127.0.0.1')
+    coll = conn[database_name()][SIDECAR]
+    coll.insert({'_id': 'FloatDoc', 'value':float(100)})
 
 def teardown():
     pass
@@ -31,6 +50,8 @@ def test_auto_increment_works_as_advertised():
     with DBTest:
         MyDoc.save(doc, safe=True)
 
+    # Counters are expected to be integers.
+    ok_(isinstance(doc.auto, int))
     eq_(doc.auto, 1)
 
     doc = MyDoc()
@@ -38,7 +59,48 @@ def test_auto_increment_works_as_advertised():
         eq_(doc.auto, 2)
         MyDoc.save(doc)
 
+    ok_(isinstance(doc.auto, int))
     eq_(doc.auto, 2)
+
+
+def test_auto_increment_initial_float_counter_value_remains_a_float():
+    doc = MyFloatCounterDoc()
+    with DBTest:
+        MyFloatCounterDoc.save(doc, safe=True)
+
+    # There are instances where the counters can be initialized
+    # as MongoDB Double types.
+    ok_(isinstance(doc.auto, float))
+
+    eq_(doc.auto, 101) # Floats can pass as integers
+    eq_(doc.auto, 101.0) # But are really floats
+
+    ok_(str(doc.auto) == "101.0") # And will output as floats.
+    ok_(str(doc.auto) != "101") # Not as integers.
+
+    doc = MyFloatCounterDoc()
+    with DBTest:
+        eq_(doc.auto, 102.0)
+        MyFloatCounterDoc.save(doc, safe=True)
+
+    ok_(isinstance(doc.auto, float))
+    eq_(doc.auto, 102)
+    eq_(doc.auto, 102.0)
+
+
+def test_auto_increment_works_with_user_defined_increment_step():
+    doc = BigCounterDoc()
+    with DBTest:
+        BigCounterDoc.save(doc, safe=True)
+
+    eq_(doc.auto, 10)
+
+    doc = BigCounterDoc()
+    with DBTest:
+        eq_(doc.auto, 20)
+        BigCounterDoc.save(doc)
+
+    eq_(doc.auto, 20)
 
 
 @raises(DatabaseMismatch)

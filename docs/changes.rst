@@ -6,6 +6,13 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.4.1
+-----
+
+- Fix bug where :func:`~humbledb.helpers.auto_increment` helper didn't respect
+  ``increment`` argument. Thanks to `paulnues <https://github.com/paulnues>`_
+  for the fix.
+
 5.4.0
 -----
 

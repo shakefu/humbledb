@@ -83,7 +83,7 @@ def auto_increment(database, collection, _id, field="value", increment=1):
 
         # We just use this directly, instead of using a Document helper
         doc = db[collection].find_and_modify({'_id': _id}, {'$inc': {field:
-            1}}, new=True, upsert=True)
+            increment}}, new=True, upsert=True)
 
         # Return the value
         if not doc:

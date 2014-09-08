@@ -37,7 +37,10 @@ class BigCounterDoc(Document):
 def setup():
     # Set up a float counter in the sidecar collection.
     import pymongo
-    conn = pymongo.MongoClient('127.0.0.1')
+    if _version._gte('2.4'):
+        conn = pymongo.MongoClient('127.0.0.1')
+    else:
+        conn = pymongo.Connection('127.0.0.1')
     coll = conn[database_name()][SIDECAR]
     coll.insert({'_id': 'FloatDoc', 'value':float(100)})
 

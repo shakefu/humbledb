@@ -6,6 +6,11 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.5.0
+-----
+
+*  Adds support for SSL. Thanks to `paulnues <https://github.com/paulnues>`_.
+
 5.4.1
 -----
 

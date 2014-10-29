@@ -197,6 +197,11 @@ class Mongo(object):
 
     """
 
+    config_ssl = pyconfig.setting('humbledb.ssl', False)
+    """ Specifies whether or not to use SSL for a connection.
+        .. versionadded: 5.5
+    """
+
     def __new__(cls):
         """ This class cannot be instantiated. """
         return cls
@@ -205,12 +210,19 @@ class Mongo(object):
     def _new_connection(cls):
         """ Return a new connection to this class' database. """
         kwargs = cls._connection_info()
+
+        # Validate if pymongo version supports SSL.
+        if cls.config_ssl == True and _version._lt('2.1'):
+            raise TypeError("Need pymongo.version >= 2.1 to use "
+                    "SSL.")
+
         kwargs.update({
                 'max_pool_size': cls.config_max_pool_size,
                 'auto_start_request': cls.config_auto_start_request,
                 'use_greenlets': cls.config_use_greenlets,
                 'tz_aware': cls.config_tz_aware,
                 'w': cls.config_write_concern,
+                'ssl': cls.config_ssl,
                 })
 
         if _version._gte('2.1.0') and _version._lt('2.2.0'):

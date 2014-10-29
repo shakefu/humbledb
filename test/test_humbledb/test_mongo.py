@@ -5,7 +5,7 @@ from unittest.case import SkipTest
 from humbledb import Mongo
 from humbledb import _version
 from humbledb.errors import DatabaseMismatch
-from ..util import database_name, eq_, DBTest, raises
+from ..util import database_name, ok_, eq_, DBTest, raises
 
 
 def teardown():
@@ -139,5 +139,38 @@ def test_mongo_uri_database_with_conflict_raises_error():
 
     with DBuri:
         TestDoc.find()
+
+
+@raises(TypeError)
+def test_mongo_client_with_ssl_before_2_1():
+    if _version._gte('2.1'):
+        raise SkipTest("Only test this with 2.1 or earlier.")
+
+    class SSLMongo(Mongo):
+        config_host = 'localhost'
+        config_port = 27017
+        config_ssl = True
+
+
+def test_mongo_client_with_ssl_after_2_1():
+    class SSLMongo(Mongo):
+        config_host = 'localhost'
+        config_port = 27017
+        config_ssl = True
+
+    from humbledb import Document
+    from humbledb.errors import ConnectionFailure
+    class SomeDoc(Document):
+        config_database = database_name()
+        config_collection = 'ssl_collection'
+
+        name = 'n'
+
+    try:
+        with SSLMongo:
+            SomeDoc.insert({SomeDoc.name:'foobar'})
+            ok_(SomeDoc.find({SomeDoc.name:'foobar'}))
+    except ConnectionFailure:
+        raise SkipTest("SSL may not be enabled on mongodb server.")
 
 

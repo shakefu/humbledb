@@ -872,6 +872,7 @@ however you cannot nest a connection within itself (this will raise a
 * **config_host** (``str``) - Hostname to connect to.
 * **config_port** (``int``) - Port to connect to.
 * **config_replica** (``str``, optional) - Name of the replica set.
+* **config_ssl** (``bool``, optional) - If True, use SSL for this connection.
 
 If ``config_replica`` is present on the class, then HumbleDB will automatically
 use a :class:`~pymongo.connection.ReplicaSetConnection` for you. (Requires
@@ -895,6 +896,9 @@ either :func:`Pyconfig.set` (i.e. ``pyconfig.set('humbledb.connection_pool',
   ``use_greenlets`` with the :class:`~pymongo.connection.Connection`
   instance. (This is only needed if you intend on using threading and greenlets
   at the same time.)
+* **humbledb.ssl** (``bool``, default: ``False``) - Whether to use
+  ``ssl`` with the :class:`~pymongo.connection.Connection`
+  instance.  The mongod or mongos you are connecting to must have SSL enabled.
 
 More configuration settings are going to be added in the near future, so you
 can customize your :class:`~pymongo.connection.Connection` to completely suit

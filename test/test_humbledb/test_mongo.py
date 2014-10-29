@@ -144,7 +144,7 @@ def test_mongo_uri_database_with_conflict_raises_error():
 @raises(TypeError)
 def test_mongo_client_with_ssl_before_2_1():
     if _version._gte('2.1'):
-        raise SkipTest("Only test this with 2.1 or earlier.")
+        raise SkipTest("Only test this with version 2.1 or earlier.")
 
     class SSLMongo(Mongo):
         config_host = 'localhost'
@@ -153,6 +153,9 @@ def test_mongo_client_with_ssl_before_2_1():
 
 
 def test_mongo_client_with_ssl_after_2_1():
+    if _version._lt('2.1'):
+        raise SkipTest("This test requires version 2.1 or later.")
+
     class SSLMongo(Mongo):
         config_host = 'localhost'
         config_port = 27017

@@ -77,6 +77,12 @@ class MongoMeta(type):
             if cls_dict.get('config_port', UNSET) is UNSET:
                 raise TypeError("missing required 'config_port'")
 
+        # Validate if pymongo version supports SSL.
+        if (cls_dict.get('config_ssl', False) is True and
+                _version._lt('2.1')):
+            raise TypeError("Need pymongo.version >= 2.1 to use "
+                    "SSL.")
+
         # Create new class
         cls = type.__new__(mcs, name, bases, cls_dict)
 
@@ -210,11 +216,6 @@ class Mongo(object):
     def _new_connection(cls):
         """ Return a new connection to this class' database. """
         kwargs = cls._connection_info()
-
-        # Validate if pymongo version supports SSL.
-        if cls.config_ssl == True and _version._lt('2.1'):
-            raise TypeError("Need pymongo.version >= 2.1 to use "
-                    "SSL.")
 
         kwargs.update({
                 'max_pool_size': cls.config_max_pool_size,

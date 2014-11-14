@@ -1,5 +1,6 @@
 
 import mock
+import pyconfig
 
 import humbledb
 from ..util import *
@@ -181,5 +182,22 @@ def test_badly_formed_index_raises_error():
             coll.find_one.__name__ = 'find_one'
             Test._ensured = None
             Test.find_one()
-            coll.ensure_index.assert_not_called()
+            eq_(coll.ensure_index.called, False)
+
+
+def test_ensure_index_can_be_skipped():
+    class Test(Document):
+        config_database = database_name()
+        config_collection = 'test'
+        config_indexes = [Index('value')]
+        value = 'v'
+
+    with DBTest:
+        with mock.patch.object(Test, 'collection') as coll:
+            coll.find_one.__name__ = 'find_one'
+            pyconfig.set('humbledb.ensure_indexes', False)
+            Test.find_one()
+            pyconfig.set('humbledb.ensure_indexes', True)
+            eq_(coll.ensure_index.called, False)
+
 

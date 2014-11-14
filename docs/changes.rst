@@ -6,6 +6,12 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.5.1
+-----
+
+* Add ``humbledb.ensure_indexes`` pyconfig setting to allow for disabling
+  ensure index calls.
+
 5.5.0
 -----
 

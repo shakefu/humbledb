@@ -1,5 +1,6 @@
 """
 """
+import pyconfig
 from pytool.lang import UNSET
 
 from humbledb import _version
@@ -41,6 +42,10 @@ class Index(object):
             :param cls: A Document subclass
 
         """
+        # Allow disabling of index creation
+        if not pyconfig.get('humbledb.ensure_indexes', True):
+            return
+
         # Map the attribute name to its key name, or just let it ride
         index = self._resolve_index(cls)
 

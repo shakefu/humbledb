@@ -234,6 +234,7 @@ class Mongo(object):
         elif _version._gte('3.0.0'):
             kwargs.pop('auto_start_request')
             kwargs.pop('max_pool_size')
+            kwargs.pop('use_greenlets')
 
         if cls.config_replica:
             kwargs['replicaSet'] = cls.config_replica

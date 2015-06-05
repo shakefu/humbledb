@@ -231,6 +231,8 @@ class Mongo(object):
             # remove it
             kwargs.pop('auto_start_request')
             kwargs.pop('use_greenlets')
+        elif _version._gte('3.0.0'):
+            kwargs.pop('auto_start_request')
 
         if cls.config_replica:
             kwargs['replicaSet'] = cls.config_replica

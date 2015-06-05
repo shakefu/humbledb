@@ -102,7 +102,7 @@ class MongoMeta(type):
             raise NestedConnection("Do not nest a connection within itself, it "
                     "may cause undefined behavior.")
         if pyconfig.get('humbledb.allow_explicit_request', True):
-            cls.connection.start_request()
+            pass#cls.connection.start_request()
         Mongo.contexts.append(cls)
 
     def end(cls):

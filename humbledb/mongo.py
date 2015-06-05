@@ -111,7 +111,7 @@ class MongoMeta(type):
             to ensure the socket is returned to the connection pool.
         """
         if pyconfig.get('humbledb.allow_explicit_request', True):
-            cls.connection.end_request()
+            pass#cls.connection.end_request()
         try:
             Mongo.contexts.pop()
         except (IndexError, AttributeError):

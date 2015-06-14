@@ -72,11 +72,8 @@ class DBTest(Mongo):
 
 # This instantiates the connection and causes nose to crap out if there's no
 # database available, which is what we want
-try:
-    with DBTest:
-        pass
-except:
-    raise RuntimeError("Cannot connect to test database.")
+with DBTest:
+    logging.getLogger(__name__).info("Connection successful.")
 
 
 def assert_is_subclass(obj, cls):

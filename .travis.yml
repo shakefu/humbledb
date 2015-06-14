@@ -11,6 +11,9 @@ env:
     - PYMONGO_VERSION='>=2.5,<2.6'
     - PYMONGO_VERSION='>=2.6,<2.7'
     - PYMONGO_VERSION='>=2.7,<2.8'
+    - PYMONGO_VERSION='>=2.8,<2.9'
+    - PYMONGO_VERSION='>=2.9,<3.0'
+    - PYMONGO_VERSION='>=3.0,<3.1'
     - PYMONGO_VERSION=''  # Allow latest
 install:
     - pip install --use-mirrors "pymongo $PYMONGO_VERSION"

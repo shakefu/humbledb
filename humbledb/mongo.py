@@ -10,6 +10,10 @@ from pytool.lang import classproperty, UNSET
 from humbledb import _version
 from humbledb.errors import NestedConnection
 
+try:
+    import ssl
+except ImportError:
+    ssl = None
 
 __all__ = [
         'Mongo',
@@ -50,6 +54,8 @@ class MongoMeta(type):
                 if _version._lt('2.1'):
                     raise TypeError("Need pymongo.version >= 2.1 for replica "
                             "sets.")
+                elif _version._gte('3.0.0'):
+                    conn = pymongo.MongoClient
                 elif _version._gte('2.4'):
                     conn = pymongo.MongoReplicaSetClient
                 else:
@@ -101,7 +107,8 @@ class MongoMeta(type):
         if cls in Mongo.contexts:
             raise NestedConnection("Do not nest a connection within itself, it "
                     "may cause undefined behavior.")
-        if pyconfig.get('humbledb.allow_explicit_request', True):
+        if (pyconfig.get('humbledb.allow_explicit_request', True)
+                and _version._lt('3.0.0')):
             cls.connection.start_request()
         Mongo.contexts.append(cls)
 
@@ -110,7 +117,8 @@ class MongoMeta(type):
             idempotent. This must always be called after :meth:`Mongo.start`
             to ensure the socket is returned to the connection pool.
         """
-        if pyconfig.get('humbledb.allow_explicit_request', True):
+        if (pyconfig.get('humbledb.allow_explicit_request', True)
+                and _version._lt('3.0.0')):
             cls.connection.end_request()
         try:
             Mongo.contexts.pop()
@@ -121,7 +129,7 @@ class MongoMeta(type):
         """ Replace the current connection with a new connection. """
         logging.getLogger(__name__).info("Reloading '{}'"
                 .format(cls.__name__))
-        if cls._connection:
+        if (cls._connection and _version._lt('3.0.0')):
             cls._connection.disconnect()
         cls._connection = cls._new_connection()
 
@@ -208,6 +216,12 @@ class Mongo(object):
         .. versionadded: 5.5
     """
 
+    config_mongo_client = pyconfig.setting('humbledb.mongo_client', {})
+    """ Allows free-form ``pymongo.MongoClient`` constructor parameters to be
+        passed to this connection to support new features.
+        .. versionadded: 5.6
+    """
+
     def __new__(cls):
         """ This class cannot be instantiated. """
         return cls
@@ -226,11 +240,23 @@ class Mongo(object):
                 'ssl': cls.config_ssl,
                 })
 
+        kwargs.update(cls.config_mongo_client)
+
         if _version._gte('2.1.0') and _version._lt('2.2.0'):
             # This causes an error for the 2.1.x versions of Pymongo, so we
             # remove it
             kwargs.pop('auto_start_request')
             kwargs.pop('use_greenlets')
+
+        if _version._gte('3.0.0'):
+            # Handle removed keywords
+            kwargs.pop('use_greenlets')
+            kwargs.pop('auto_start_request')
+            # Handle changed keywords
+            kwargs['maxPoolSize'] = kwargs.pop('max_pool_size')
+            # Handle other 3.0 stuff
+            if kwargs.get('ssl') and ssl:
+                kwargs.setdefault('ssl_cert_reqs', ssl.CERT_NONE)
 
         if cls.config_replica:
             kwargs['replicaSet'] = cls.config_replica

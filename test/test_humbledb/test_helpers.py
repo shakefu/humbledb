@@ -15,6 +15,13 @@ from ..util import DBTest, database_name, eq_, ok_, raises, SkipTest
 SIDECAR = 'sidecars'
 
 
+# The safe= keyword doesn't exist in 3.0
+if _version._lt('3.0.0'):
+    _safe = {'safe': True}
+else:
+    _safe = {}
+
+
 class MyDoc(Document):
     config_database = database_name()
     config_collection = 'test'
@@ -51,7 +58,7 @@ def teardown():
 def test_auto_increment_works_as_advertised():
     doc = MyDoc()
     with DBTest:
-        MyDoc.save(doc, safe=True)
+        MyDoc.save(doc, **_safe)
 
     # Counters are expected to be integers.
     ok_(isinstance(doc.auto, int))
@@ -69,7 +76,7 @@ def test_auto_increment_works_as_advertised():
 def test_auto_increment_initial_float_counter_value_remains_a_float():
     doc = MyFloatCounterDoc()
     with DBTest:
-        MyFloatCounterDoc.save(doc, safe=True)
+        MyFloatCounterDoc.save(doc, **_safe)
 
     # There are instances where the counters can be initialized
     # as MongoDB Double types.
@@ -84,7 +91,7 @@ def test_auto_increment_initial_float_counter_value_remains_a_float():
     doc = MyFloatCounterDoc()
     with DBTest:
         eq_(doc.auto, 102.0)
-        MyFloatCounterDoc.save(doc, safe=True)
+        MyFloatCounterDoc.save(doc, **_safe)
 
     ok_(isinstance(doc.auto, float))
     eq_(doc.auto, 102)
@@ -94,7 +101,7 @@ def test_auto_increment_initial_float_counter_value_remains_a_float():
 def test_auto_increment_works_with_user_defined_increment_step():
     doc = BigCounterDoc()
     with DBTest:
-        BigCounterDoc.save(doc, safe=True)
+        BigCounterDoc.save(doc, **_safe)
 
     eq_(doc.auto, 10)
 

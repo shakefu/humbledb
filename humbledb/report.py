@@ -11,7 +11,7 @@ import pytool
 from pytool.lang import classproperty
 
 import humbledb
-from humbledb import Document, Embed, Index
+from humbledb import Document, Embed, Index, _version
 
 
 # Interval and Period constants
@@ -108,7 +108,8 @@ class Report(Document):
         Record an instance of `event` that happened at `stamp`.
 
         If `safe` is ``True``, then this method will wait for write
-        acknowledgement from the server.
+        acknowledgement from the server. The `safe` keyword has no effect for
+        `pymongo >= 3.0.0`.
 
         :param event: Event identifier string
         :param stamp: Datetime stamp for this event (default: now)
@@ -136,8 +137,11 @@ class Report(Document):
         update = cls._update_query(stamp, count)
         # Get our query doc
         doc = {'_id': cls.record_id(event, stamp)}
+        _opts = {}
+        if _version._lt('3.0.0'):
+            _opts['safe'] = safe
         # Update/upsert the document, hooray
-        cls.update(doc, update, upsert=True, safe=safe)
+        cls.update(doc, update, upsert=True, **_opts)
 
     @classproperty
     def yearly(cls):
@@ -276,9 +280,12 @@ class Report(Document):
         # Get our query and update clauses
         query, update = cls._preallocate_query(event, stamp)
         try:
+            _opts = {}
+            if _version._lt('3.0.0'):
+                _opts['safe'] = True
             # We always want preallocation to be "safe" in order to avoid race
             # conditions with the subsequent update
-            cls.update(query, update, upsert=True, safe=True)
+            cls.update(query, update, upsert=True, **_opts)
         except humbledb.errors.DuplicateKeyError:  # pragma: no cover
             # Get out of here, we're done
             return

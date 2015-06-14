@@ -102,7 +102,7 @@ class MongoMeta(type):
             raise NestedConnection("Do not nest a connection within itself, it "
                     "may cause undefined behavior.")
         if pyconfig.get('humbledb.allow_explicit_request', True):
-            cls.connection.start_request()
+            pass#cls.connection.start_request()
         Mongo.contexts.append(cls)
 
     def end(cls):
@@ -111,7 +111,7 @@ class MongoMeta(type):
             to ensure the socket is returned to the connection pool.
         """
         if pyconfig.get('humbledb.allow_explicit_request', True):
-            cls.connection.end_request()
+            pass#cls.connection.end_request()
         try:
             Mongo.contexts.pop()
         except (IndexError, AttributeError):
@@ -230,6 +230,10 @@ class Mongo(object):
             # This causes an error for the 2.1.x versions of Pymongo, so we
             # remove it
             kwargs.pop('auto_start_request')
+            kwargs.pop('use_greenlets')
+        elif _version._gte('3.0.0'):
+            kwargs.pop('auto_start_request')
+            kwargs.pop('max_pool_size')
             kwargs.pop('use_greenlets')
 
         if cls.config_replica:

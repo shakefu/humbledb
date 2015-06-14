@@ -159,7 +159,8 @@ def test_mongo_client_with_ssl_after_2_1():
         config_host = 'localhost'
         config_port = 27017
         config_ssl = True
-        config_mongo_client = {'serverSelectionTimeoutMS': 300}
+        config_mongo_client = ({'serverSelectionTimeoutMS': 300} if
+                _version._gte('3.0') else {})
 
     class SomeDoc(Document):
         config_database = database_name()

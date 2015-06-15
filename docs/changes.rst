@@ -9,8 +9,8 @@ This section contains all the changes that I can remember, by version.
 5.6.0
 -----
 
-* Adds minimum support for Pymongo version 3.0.0 and higher which made some
-  backwards incompatible changes.
+* Adds support for Pymongo version 3.0.0 and higher which made some backwards
+  incompatible changes.
 
 *Released June 14, 2015*
 

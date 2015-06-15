@@ -7,6 +7,13 @@ from humbledb import Mongo, Document, Embed, _version
 from ..util import eq_, ok_, raises, DBTest, database_name
 
 
+# The safe= keyword doesn't exist in 3.0
+if _version._lt('3.0.0'):
+    _safe = {'safe': True}
+else:
+    _safe = {}
+
+
 def teardown():
     DBTest.connection.drop_database(database_name())
 
@@ -290,12 +297,17 @@ def test_classproperty_attribute():
 
 
 def test_self_insertion():
-    # This sounds dirty
     t = DocTest()
     with DBTest:
         type(t).insert(t)
 
     ok_(t._id)
+
+
+def test_cls_self_insertion():
+    with DBTest:
+        DocTest.insert({'_id': 'tsci', 't': True})
+        ok_(DocTest.find_one({'_id': 'tsci'}))
 
 
 @raises(AttributeError)
@@ -743,7 +755,7 @@ def test_saved_default_is_set_on_saving():
 
     d = Default()
     with DBTest:
-        _id = Default.save(d, safe=True)
+        _id = Default.save(d, **_safe)
         d = Default.find_one(_id)
 
     d.pop('_id')
@@ -757,7 +769,7 @@ def test_saved_default_is_set_on_inserting():
 
     d = Default()
     with DBTest:
-        _id = Default.insert(d, safe=True)
+        _id = Default.insert(d, **_safe)
         d = Default.find_one(_id)
 
     d.pop('_id')
@@ -775,7 +787,7 @@ def test_saved_default_is_set_on_multiple_inserts():
         docs.append(d)
 
     with DBTest:
-        _ids = Default.insert(docs, safe=True)
+        _ids = Default.insert(docs, **_safe)
         eq_(len(_ids), 3)
         docs = list(Default.find({Default._id: {'$in': _ids}}))
 

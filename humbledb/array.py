@@ -1,8 +1,8 @@
 import itertools
 
 import humbledb
-from humbledb import Document, UNSET
 from humbledb.errors import NoConnection
+from humbledb import Document, UNSET, _version
 
 
 class Page(Document):
@@ -11,6 +11,7 @@ class Page(Document):
     """ Number of entries currently in this page. """
     entries = 'e'  # Array of entries
     """ Array of entries. """
+    _opts = {'safe': True} if _version._lt('3.0.0') else {}
 
 
 class ArrayMeta(type):
@@ -125,12 +126,12 @@ class Array(object):
         try:
             # We need to do this as safe, because otherwise it may not be
             # available to a subsequent call to append
-            Page.insert(page, safe=True)
+            Page.insert(page, **Page._opts)
         except humbledb.errors.DuplicateKeyError:
             # A race condition already created this page, so we are done
             return
         # Remove the padding
-        Page.update({'_id': page._id}, {'$unset': {'padding': 1}}, safe=True)
+        Page.update({'_id': page._id}, {'$unset': {'padding': 1}}, **Page._opts)
 
     def append(self, entry):
         """
@@ -217,8 +218,12 @@ class Array(object):
         # This is implemented rather than __len__ because it incurs a query,
         # and we don't want to query transparently
         Page = self._page
-        cursor = Page.find({'_id': self._id_regex}, fields={Page.size:
-            1, '_id': 0})
+        if _version._lt('3.0.0'):
+            cursor = Page.find({'_id': self._id_regex}, fields={Page.size:
+                1, '_id': 0})
+        else:
+            cursor = Page.find({'_id': self._id_regex}, {Page.size: 1, '_id':
+                0})
         return sum(p.size for p in cursor)
 
     def pages(self):

@@ -2,9 +2,8 @@ import mock
 import pyconfig
 from unittest.case import SkipTest
 
-from humbledb import Mongo
-from humbledb import _version
-from humbledb.errors import DatabaseMismatch
+from humbledb import Mongo, Document, _version
+from humbledb.errors import DatabaseMismatch, ConnectionFailure
 from ..util import database_name, ok_, eq_, DBTest, raises
 
 
@@ -160,9 +159,9 @@ def test_mongo_client_with_ssl_after_2_1():
         config_host = 'localhost'
         config_port = 27017
         config_ssl = True
+        config_mongo_client = ({'serverSelectionTimeoutMS': 300} if
+                _version._gte('3.0') else {})
 
-    from humbledb import Document
-    from humbledb.errors import ConnectionFailure
     class SomeDoc(Document):
         config_database = database_name()
         config_collection = 'ssl_collection'
@@ -170,10 +169,17 @@ def test_mongo_client_with_ssl_after_2_1():
         name = 'n'
 
     try:
+        SomeDoc.insert
+    except:
+        raise
+
+    try:
+        import socket
+        socket.setdefaulttimeout(3)
         with SSLMongo:
             SomeDoc.insert({SomeDoc.name:'foobar'})
             ok_(SomeDoc.find({SomeDoc.name:'foobar'}))
-    except ConnectionFailure:
-        raise SkipTest("SSL may not be enabled on mongodb server.")
+    except ConnectionFailure, err:
+        raise SkipTest("SSL may not be enabled on mongodb server: %r" % err)
 
 

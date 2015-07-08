@@ -6,6 +6,17 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+5.6.1
+-----
+
+* Makes HumbleDB handle the ``safe=`` keyword for ``update()``, ``insert()``,
+  and ``save()`` when using Pymongo 3.0 or greater. If you specified
+  ``safe=False``, then HumbleDB will use ``w=0`` (no write concern), and
+  otherwise will fall back to the configured write concern level, which
+  defaults to ``w=1``.
+
+*Released July 8, 2015*
+
 5.6.0
 -----
 

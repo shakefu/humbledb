@@ -263,7 +263,7 @@ class DocumentMeta(type):
         if func.__name__ in cls._wrapped_doc_methods:
             @wraps(func)
             def doc_wrapper(*args, **kwargs):
-                """ Wrapper function to gurantee object typing and indexes. """
+                """ Wrapper function to guarantee object typing and indexes. """
                 cls._ensure_indexes()
                 doc = func(*args, **kwargs)
                 # If doc is not iterable (e.g. None), then this will error

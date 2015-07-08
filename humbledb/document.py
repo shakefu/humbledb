@@ -291,7 +291,16 @@ class DocumentMeta(type):
         return cursor_wrapper
 
     # Create an update property which will work with mocks in testing
-    def _get_update(cls): return cls._update or cls.collection.update
+    def _wrap_update(cls, *args, **kwargs):
+        """
+        Override collection update method to handle multiple Pymongo
+        versions.
+
+        """
+        _version._clean(kwargs)
+        return cls.collection.update(*args, **kwargs)
+
+    def _get_update(cls): return cls._update or cls._wrap_update
     def _set_update(cls, value): cls._update = value
     def _del_update(cls): cls._update = None
     update = property(_get_update, _set_update, _del_update)
@@ -318,6 +327,7 @@ class DocumentMeta(type):
         :type manipulate: bool
 
         """
+        _version._clean(kwargs)
         if args and kwargs.get('manipulate', True):
             cls._ensure_saved_defaults(args[0])
 
@@ -337,6 +347,7 @@ class DocumentMeta(type):
         :type manipulate: bool
 
         """
+        _version._clean(kwargs)
         if args and kwargs.get('manipulate', True):
             # Insert can take an iterable of documents or a single doc
             doc_or_docs = args[0]

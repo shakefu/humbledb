@@ -180,9 +180,9 @@ def test_wrap_method_behaves_itself():
             coll.find.assert_called_with()
 
 
-def test_update_passthrough():
+def test_update_wrapping():
     with DBTest:
-        eq_(DocTest.collection.update, DocTest.update)
+        eq_(DocTest._wrap_update, DocTest.update)
 
 
 def test_document_repr():
@@ -860,4 +860,19 @@ def test_only_two_tuples_with_leading_string_are_interpreted_as_defaults():
     eq_(d.attr3, v3)
     eq_(d.attr4, v4)
 
+
+def test_update_with_safe_keyword_doesnt_break_pymongo_3():
+    with DBTest:
+        DocTest.update({'_id': 'update_safe_pymongo_3'}, {'$set': {'ok':
+            True}}, upsert=True, safe=True)
+
+
+def test_save_with_safe_keyword_doesnt_break_pymongo_3():
+    with DBTest:
+        DocTest.save({'_id': 'save_safe_pymongo_3'}, safe=True)
+
+
+def test_insert_with_safe_keyword_doesnt_break_pymongo_3():
+    with DBTest:
+        DocTest.insert({'_id': 'insert_safe_pymongo_3'}, safe=True)
 

@@ -1,14 +1,18 @@
-import multiprocessing, logging # Fix atexit bug
 from setuptools import setup, find_packages
 
-exec("c=__import__('compiler');a='__version__';l=[];g=lambda:[n.expr.value for"
-        " n in l for o in n.nodes if o.name==a].pop();c.walk(c.parseFile('%s/_"
-        "_init__.py'),type('v',(object,),{'visitAssign':lambda s,n:l.append(n)"
-        "})());exec(a+'=g()');"%'humbledb')
+
+def version():
+    try:
+        import re
+        return re.search("^__version__ = '(.*)'",
+                open('pytool/__init__.py').read(), re.M).group(1)
+    except:
+        raise RuntimeError("Could not get version")
+
 
 setup(
         name='humbledb',
-        version=__version__,
+        version=version(),
         description="HumbleDB - MongoDB Object-Document Mapper",
         author="Jacob Alheid",
         author_email="jake@about.me",

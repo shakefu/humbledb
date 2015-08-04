@@ -5,7 +5,7 @@ def version():
     try:
         import re
         return re.search("^__version__ = '(.*)'",
-                open('pytool/__init__.py').read(), re.M).group(1)
+                open('humbledb/__init__.py').read(), re.M).group(1)
     except:
         raise RuntimeError("Could not get version")
 
@@ -20,7 +20,7 @@ setup(
         install_requires=[
             'pymongo >= 2.0.1',
             'pyconfig',
-            'pytool >= 3.0.1',
+            'pytool >= 3.4.1',
             ],
         test_suite='nose.collector',
         tests_require=[

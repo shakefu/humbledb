@@ -1,19 +1,21 @@
 language: python
 python:
-  - "2.7"
+  - 2.7
+  - 3.3
+  - 3.4
 services: mongodb
 env:
-    - PYMONGO_VERSION='>=2.0,<2.1'
-    - PYMONGO_VERSION='>=2.1,<2.2'
-    - PYMONGO_VERSION='>=2.2,<2.3'
-    - PYMONGO_VERSION='>=2.3,<2.4'
-    - PYMONGO_VERSION='>=2.4,<2.6'
-    - PYMONGO_VERSION='>=2.6,<2.9'
-    - PYMONGO_VERSION='>=3.0,<3.1'
-    - PYMONGO_VERSION=''  # Allow latest
+  - PYMONGO_VERSION='>=2.0,<2.1'
+  - PYMONGO_VERSION='>=2.1,<2.2'
+  - PYMONGO_VERSION='>=2.2,<2.3'
+  - PYMONGO_VERSION='>=2.3,<2.4'
+  - PYMONGO_VERSION='>=2.4,<2.6'
+  - PYMONGO_VERSION='>=2.6,<2.9'
+  - PYMONGO_VERSION='>=3.0,<3.1'
+  - PYMONGO_VERSION=''  # Allow latest
 install:
-    - pip install --use-mirrors "pymongo $PYMONGO_VERSION"
-    - pip install --use-mirrors .
-    - pip install --use-mirrors coveralls coverage
+  - pip install --use-mirrors "pymongo $PYMONGO_VERSION"
+  - pip install --use-mirrors .
+  - pip install --use-mirrors coveralls coverage
 script: coverage run --source=humbledb setup.py test
 after_success: coveralls

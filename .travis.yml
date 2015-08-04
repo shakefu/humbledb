@@ -14,9 +14,19 @@ env:
   - PYMONGO_VERSION='>=3.0,<3.1'
   - PYMONGO_VERSION=''  # Allow latest
 install:
-  - pip install --use-mirrors "pymongo $PYMONGO_VERSION"
+  - >
+    if [[ $TRAVIS_PYTHON_VERSION == 2* ]];
+    then pip install --use-mirrors "pymongo $PYMONGO_VERSION";
+    elif [[ "$PYMONGO_VERSION" == ">=2.0,<2.1" ]];
+    then pip install --use-mirrors "pymongo==2.2";
+    elif [[ "$PYMONGO_VERSION" == ">=2.1,<2.2" ]];
+    then pip install --use-mirrors "pymongo==2.2";
+    fi
   - pip install --use-mirrors .
   - pip install --use-mirrors coveralls coverage
-script:
-  - if [[ $TRAVIS_PYTHON_VERSION == 3* ]]; then coverage run --source=humbledb setup.py test; true; else coverage run --source=humbledb setup.py test; fi
+script: >
+  if [[ $TRAVIS_PYTHON_VERSION == 3* ]];
+  then coverage run --source=humbledb setup.py test; true;
+  else coverage run --source=humbledb setup.py test; fi
+
 after_success: coveralls

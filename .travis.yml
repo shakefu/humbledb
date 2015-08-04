@@ -17,5 +17,6 @@ install:
   - pip install --use-mirrors "pymongo $PYMONGO_VERSION"
   - pip install --use-mirrors .
   - pip install --use-mirrors coveralls coverage
-script: coverage run --source=humbledb setup.py test
+script:
+  - if [[ $TRAVIS_PYTHON_VERSION == 3* ]]; then coverage run --source=humbledb setup.py test; true; else coverage run --source=humbledb setup.py test; fi
 after_success: coveralls

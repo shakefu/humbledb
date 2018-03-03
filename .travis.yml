@@ -9,9 +9,9 @@ env:
   - PYMONGO_VERSION='<3.6'
   - PYMONGO_VERSION=''  # Allow latest
 install:
-  - pip install --use-mirrors "pymongo $PYMONGO_VERSION"
-  - pip install --use-mirrors .
-  - pip install --use-mirrors coveralls coverage
+  - pip install "pymongo $PYMONGO_VERSION"
+  - pip install .
+  - pip install coveralls coverage
 script: >
   if [[ $TRAVIS_PYTHON_VERSION == 3* ]];
   then coverage run --source=humbledb setup.py test; true;

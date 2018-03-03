@@ -1,12 +1,12 @@
 language: python
 python:
   - 2.7
-  - 3.4
   - 3.5
+  - 3.6
 services: mongodb
 env:
-  - PYMONGO_VERSION='>=2.6,<2.9'
-  - PYMONGO_VERSION='>=3.5,<3.6'
+  - PYMONGO_VERSION='<3'
+  - PYMONGO_VERSION='<3.6'
   - PYMONGO_VERSION=''  # Allow latest
 install:
   - pip install --use-mirrors "pymongo $PYMONGO_VERSION"

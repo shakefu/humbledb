@@ -3,6 +3,8 @@
 import six
 import pymongo
 
+from humbledb import _version
+
 
 class Cursor(pymongo.cursor.Cursor):
     """ This subclass of :class:`pymongo.cursor.Cursor` is used to ensure that
@@ -15,7 +17,7 @@ class Cursor(pymongo.cursor.Cursor):
     _doc_cls = dict
 
     def next(self):
-        if six.PY3:
+        if six.PY3 and _version._gte('3'):
             doc = super().next()
         else:
             doc = super(Cursor, self).next()

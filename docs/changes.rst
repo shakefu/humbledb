@@ -6,6 +6,17 @@ Changes by version
 
 This section contains all the changes that I can remember, by version.
 
+6.0.0
+-----
+
+* Drops support for pymongo < 2.9.
+* Adds support for Python > 3.5.
+* Fixes some minor test cases.
+* Deprecates support for pymongo < 3.
+* Deprecates support for Python < 3.
+
+*Released March 6, 2018.*
+
 5.6.1
 -----
 

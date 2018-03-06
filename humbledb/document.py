@@ -3,6 +3,7 @@
 import logging
 from functools import wraps
 
+import six
 import pymongo
 import pyconfig
 from pytool.lang import UNSET
@@ -19,7 +20,7 @@ COLLECTION_METHODS = set([_ for _ in dir(pymongo.collection.Collection) if not
 del _ # This is necessary since _ lingers in the module namespace otherwise
 
 
-class Embed(unicode):
+class Embed(six.text_type):
     """ This class is used to map attribute names on embedded subdocuments.
 
         Example usage::

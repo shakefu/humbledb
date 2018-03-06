@@ -1,10 +1,12 @@
 """
 """
+import six
+
 from pytool.lang import UNSET
 from pytool.proxy import DictProxy, ListProxy
 
 
-class NameMap(unicode):
+class NameMap(six.text_type):
     """ This class is used to map attribute names to document keys internally.
     """
     def __init__(self, value=''):

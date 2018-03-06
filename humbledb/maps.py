@@ -18,8 +18,8 @@ class NameMap(six.text_type):
     def __init__(self, value=''):
         self._key = value.split('.')[-1]
         self._default_value = UNSET
-        if six.PY2:
-            super(NameMap, self).__init__(value)
+        # TODO: Remove this later after Python3 is working
+        # super(NameMap, self).__init__(value)
 
     @property
     def key(self):
@@ -84,19 +84,12 @@ class DictMap(DictProxy):
         the highest level is the main document.
 
     """
-    def __new__(cls, value=''):
-        if six.PY3:
-            return super().__new__(cls, value)
-        else:
-            return super(DictMap, cls).__new__(cls, value)
-
     def __init__(self, value, name_map, parent, key, reverse_name_map):
         self._parent = parent
         self._key = key
         self._name_map = name_map
         self._reverse_name_map = reverse_name_map
-        if six.PY2:
-            super(DictMap, self).__init__(value)
+        super(DictMap, self).__init__(value)
 
     @property
     def _parent_mutable(self):
@@ -191,10 +184,7 @@ class DictMap(DictProxy):
             self._parent[self._key] = self._data
 
         # Assign to self
-        if six.PY3:
-            super().__setitem__(key, value)
-        else:
-            super(DictMap, self).__setitem__(key, value)
+        super(DictMap, self).__setitem__(key, value)
 
     def __delitem__(self, key):
         if self._key not in self._parent:
@@ -203,19 +193,13 @@ class DictMap(DictProxy):
 
         # Delete from self
         if key in self:
-            if six.PY3:
-                super().__delitem__(key)
-            else:
-                super(DictMap, self).__delitem__(key)
+            super(DictMap, self).__delitem__(key)
             # If this dict is empty, remove it totally from the parent
             if not self and self._parent_mutable:
                 del self._parent[self._key]
         else:
             # Raise an error
-            if six.PY3:
-                super().__delitem__(key)
-            else:
-                super(DictMap, self).__delitem__(key)
+            super(DictMap, self).__delitem__(key)
 
     def for_json(self):
         """ Return this suitable for JSON encoding. """
@@ -236,19 +220,12 @@ class DictMap(DictProxy):
 
 
 class ListMap(ListProxy):
-    def __new__(cls, value=''):
-        if six.PY3:
-            return super().__new__(cls, value)
-        else:
-            return super(ListMap, cls).__new__(cls, value)
-
     def __init__(self, value, name_map, parent, key, reverse_name_map):
         self._parent = parent
         self._key = key
         self._name_map = name_map
         self._reverse_name_map = reverse_name_map
-        if six.PY2:
-            super(ListMap, self).__init__(value)
+        super(ListMap, self).__init__(value)
 
     def new(self):
         """ Create a new embedded document in this list. """
@@ -265,10 +242,7 @@ class ListMap(ListProxy):
         return value
 
     def __getitem__(self, index):
-        if six.PY3:
-            value = super().__getitem__(index)
-        else:
-            value = super(ListMap, self).__getitem__(index)
+        value = super(ListMap, self).__getitem__(index)
         # Only create a new DictMap if we actually map into this list
         if isinstance(value, dict) and not self._name_map.empty():
             value = DictMap(value, self._name_map, self, None,

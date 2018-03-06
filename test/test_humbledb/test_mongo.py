@@ -71,6 +71,9 @@ def test_replica_works_for_versions_after_2_4():
     if _version._lt('2.4'):
         raise SkipTest
 
+    if _version._gte('3'):
+        raise SkipTest
+
     with mock.patch('pymongo.MongoReplicaSetClient') as replica:
         class Replica(Mongo):
             config_host = 'localhost'

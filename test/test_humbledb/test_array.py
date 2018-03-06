@@ -295,7 +295,7 @@ def test_getitem_works_for_slices():
         eq_(t[1:2], [3, 4, 5])
         eq_(t[0:2], [0, 1, 2, 3, 4, 5])
         eq_(t[2:4], [6, 7, 8, 9])
-        eq_(t[0:100], range(10))
+        eq_(t[0:100], list(range(10)))
 
 
 @raises(TypeError)

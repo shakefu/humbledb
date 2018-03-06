@@ -46,20 +46,20 @@ def enable_sharding(collection, key):
     try:
         conn.admin.command('listShards')
     except humbledb.errors.OperationFailure as exc:
-        if re.match('.*no such.*listShards', exc.message):
+        if re.match('.*no such.*listShards', str(exc)):
             logging.getLogger(__name__).info("Sharding not available.")
             return False
         raise
     try:
         conn.admin.command('enableSharding', database_name())
     except humbledb.errors.OperationFailure as exc:
-        if 'already' not in exc.message:
+        if 'already' not in str(exc):
             raise
     try:
         conn.admin.command('shardCollection', database_name() + '.' +
                 collection, key=key)
     except humbledb.errors.OperationFailure as exc:
-        if 'already' not in exc.message:
+        if 'already' not in str(exc):
             raise
     logging.getLogger(__name__).info("Sharding enabled for %r.%r on %r.",
             database_name(), collection, key)

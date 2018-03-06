@@ -69,3 +69,24 @@ def test_if_a_cursor_is_not_returned_properly_we_exit_quickly():
             cursor = DocTest.find()
             is_(cursor, coll.find.return_value)
 
+
+def test_cursor_ensures_document_types_when_iterating_explicitly():
+    with DBTest:
+        # Ensure we have a document
+        DocTest.insert({})
+        # Get the cursor
+        cursor = DocTest.find()
+        cursor = iter(cursor)
+        item = cursor.next()
+        is_instance_(item, DocTest)
+
+
+def test_cursor_ensures_document_types_when_iterating_to_list():
+    with DBTest:
+        # Ensure we have a document
+        DocTest.insert({})
+        # Get the cursor
+        cursor = DocTest.find()
+        items = list(cursor)
+        is_instance_(items[0], DocTest)
+

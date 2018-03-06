@@ -16,9 +16,9 @@ class Cursor(pymongo.cursor.Cursor):
 
     def next(self):
         if six.PY3:
-            doc = super(Cursor, self).next()
-        else:
             doc = super().next()
+        else:
+            doc = super(Cursor, self).next()
         doc = self._doc_cls(doc)
         return doc
 

@@ -1,3 +1,4 @@
+import re
 import logging
 import pyconfig
 import nose.tools
@@ -45,7 +46,7 @@ def enable_sharding(collection, key):
     try:
         conn.admin.command('listShards')
     except humbledb.errors.OperationFailure, exc:
-        if 'failed: no such cmd: listShards' in exc.message:
+        if re.match('.*failed: no such.*listShards', exc.message):
             logging.getLogger(__name__).info("Sharding not available.")
             return False
         raise
@@ -55,8 +56,8 @@ def enable_sharding(collection, key):
         if 'failed: already' not in exc.message:
             raise
     try:
-        conn.admin.command('shardCollection', database_name() + '.' + collection,
-            key=key)
+        conn.admin.command('shardCollection', database_name() + '.' +
+                collection, key=key)
     except humbledb.errors.OperationFailure, exc:
         if 'failed: already' not in exc.message:
             raise

@@ -15,14 +15,20 @@ class Cursor(pymongo.cursor.Cursor):
     _doc_cls = dict
 
     def next(self):
-        doc = super(Cursor, self).next()
+        if six.PY3:
+            doc = super(Cursor, self).next()
+        else:
+            doc = super().next()
         doc = self._doc_cls(doc)
         return doc
 
     __next__ = next
 
     def __getitem__(self, index):
-        doc = super(Cursor, self).__getitem__(index)
+        if six.PY3:
+            doc = super().__getitem__(index)
+        else:
+            doc = super(Cursor, self).__getitem__(index)
         return self._doc_cls(doc)
 
     def __clone(self, deepcopy=True):

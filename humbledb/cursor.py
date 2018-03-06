@@ -19,6 +19,8 @@ class Cursor(pymongo.cursor.Cursor):
     def next(self):
         if six.PY3 and _version._gte('3'):
             doc = super().next()
+        elif six.PY3 and _version._lt('3'):
+            doc = super().__next__()
         else:
             doc = super(Cursor, self).next()
         doc = self._doc_cls(doc)

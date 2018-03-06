@@ -6,6 +6,7 @@ from functools import wraps
 import six
 import pymongo
 import pyconfig
+from six.moves import xrange
 from pytool.lang import UNSET
 
 from humbledb import _version
@@ -15,6 +16,7 @@ from humbledb.cursor import Cursor
 from humbledb.maps import DictMap, NameMap, ListMap
 from humbledb.errors import NoConnection, MissingConfig, DatabaseMismatch
 
+_ = None
 COLLECTION_METHODS = set([_ for _ in dir(pymongo.collection.Collection) if not
     _.startswith('_') and callable(getattr(pymongo.collection.Collection, _))])
 del _ # This is necessary since _ lingers in the module namespace otherwise
@@ -34,6 +36,12 @@ class Embed(six.text_type):
                 embed.time = 't'
 
     """
+    def __new__(cls, value=''):
+        if six.PY3:
+            return super().__new__(cls, value)
+        else:
+            return super(Embed, cls).__new__(cls, value)
+
     def as_name_map(self, base_name):
         """ Return this object mapped onto :class:`~humbledb.maps.NameMap`
         objects. """
@@ -41,7 +49,7 @@ class Embed(six.text_type):
 
         for name, value in self.__dict__.items():
             # Skip most everything
-            if not isinstance(value, basestring):
+            if not isinstance(value, six.string_types):
                 continue
             # Skip private stuff
             if name.startswith('_'):
@@ -68,7 +76,7 @@ class Embed(six.text_type):
 
         for name, value in self.__dict__.items():
             # Skip most everything
-            if not isinstance(value, basestring):
+            if not isinstance(value, six.string_types):
                 continue
             # Skip private stuff
             if name.startswith('_'):
@@ -152,7 +160,11 @@ class DocumentMeta(type):
         # Iterate over the names in `cls_dict` looking for attributes whose
         # values are string literals or `NameMap` subclasses. These attributes
         # will be mapped to document keys where the key is the value
-        for name in cls_dict.keys():
+        if six.PY3:
+            cls_keys = list(cls_dict)
+        else:
+            cls_keys = cls_dict.keys()
+        for name in cls_keys:
             # Raise error on bad attribute names
             if name in bad_names:
                 raise TypeError("'{}' bad attribute name".format(name))
@@ -160,7 +172,7 @@ class DocumentMeta(type):
             if name in config_names:
                 continue
             # Skip most everything
-            if not isinstance(cls_dict[name], (basestring, tuple)):
+            if not isinstance(cls_dict[name], (six.string_types, tuple)):
                 continue
             # Skip private stuff
             if name.startswith('_') and name != '_id':
@@ -177,7 +189,7 @@ class DocumentMeta(type):
                     continue
                 value, default = value
                 # Check that the tuple's first value is a string key
-                if not isinstance(value, basestring):
+                if not isinstance(value, six.string_types):
                     continue
                 # If the default is a callable, it's a saved default value, so
                 # we memoize it for later
@@ -223,7 +235,7 @@ class DocumentMeta(type):
                 raise TypeError("'config_indexes' must be a list")
             for i in xrange(len(indexes)):
                 index = indexes[i]
-                if isinstance(index, basestring):
+                if isinstance(index, six.string_types):
                     indexes[i] = Index(index)
                     continue
                 elif isinstance(index, Index):
@@ -367,11 +379,12 @@ class DocumentMeta(type):
             return
         # Iterate over the saved defaults and assign them if they don't already
         # exist
-        for key, value in cls._saved_defaults.iteritems():
+        for key, value in six.iteritems(cls._saved_defaults):
             if key not in doc:
                 doc[key] = value()
 
 
+@six.add_metaclass(DocumentMeta)
 class Document(dict):
     """ This is the base class for a HumbleDB document. It should not be used
         directly, but rather configured via subclassing.
@@ -392,8 +405,6 @@ class Document(dict):
                 body = 'b'
 
     """
-    __metaclass__ = DocumentMeta
-
     collection = None
     """ :class:`pymongo.collection.Collection` instance for this document. """
 
@@ -433,7 +444,7 @@ class Document(dict):
                 # The name map has no knowledge of the attribute key names, so
                 # we have to use the reverse name map to get those
                 defaults = {reverse_name_map[k]: v for k, v in
-                        name_map._defaults().iteritems()}
+                        six.iteritems(name_map._defaults())}
                 copy.update(defaults)
 
             for key, value in doc.items():

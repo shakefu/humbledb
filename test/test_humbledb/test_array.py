@@ -1,5 +1,7 @@
 import random
 
+from six.moves import xrange
+
 from humbledb import Document
 from humbledb.array import Array
 from test.util import (database_name, DBTest, ok_, eq_, enable_sharding,

@@ -3,6 +3,7 @@
 import logging
 import threading
 
+import six
 import pymongo
 import pyconfig
 from pytool.lang import classproperty, UNSET
@@ -140,6 +141,7 @@ class MongoMeta(type):
         cls.end()
 
 
+@six.add_metaclass(MongoMeta)
 class Mongo(object):
     """
     Singleton context manager class for managing a single
@@ -169,7 +171,6 @@ class Mongo(object):
             doc = MyDoc.find_one()
 
     """
-    __metaclass__ = MongoMeta
     _self = None
 
     config_uri = UNSET

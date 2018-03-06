@@ -1,6 +1,8 @@
 """
 """
+import six
 import pyconfig
+from six.moves import xrange
 from pytool.lang import UNSET
 
 from humbledb import _version
@@ -61,7 +63,7 @@ class Index(object):
 
         """
         # If we have just a string, it's a simple index
-        if isinstance(self.index, basestring):
+        if isinstance(self.index, six.string_types):
             return self._resolve_name(cls, self.index)
 
         # Otherwise it must be an iterable
@@ -84,7 +86,7 @@ class Index(object):
             part = getattr(part, attr, UNSET)
             if part is UNSET:
                 return name
-        if not isinstance(part, basestring):
+        if not isinstance(part, six.string_types):
             raise TypeError("Invalid key: {!r}".format(part))
         return part
 

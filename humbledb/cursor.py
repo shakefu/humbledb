@@ -1,5 +1,6 @@
 """
 """
+import six
 import pymongo
 
 
@@ -36,7 +37,7 @@ class Cursor(pymongo.cursor.Cursor):
                            "must_use_master", "uuid_subtype", "query_flags",
                            "kwargs")
         more_values_to_clone = ('_doc_cls',)
-        data = dict((k, v) for k, v in self.__dict__.iteritems()
+        data = dict((k, v) for k, v in six.iteritems(self.__dict__)
                     if (k.startswith('_Cursor__') and k[9:] in values_to_clone)
                     or (k in more_values_to_clone))
         if deepcopy and hasattr(self, '__deepcopy'):

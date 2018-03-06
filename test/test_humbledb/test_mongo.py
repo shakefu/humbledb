@@ -179,7 +179,7 @@ def test_mongo_client_with_ssl_after_2_1():
         with SSLMongo:
             SomeDoc.insert({SomeDoc.name:'foobar'})
             ok_(SomeDoc.find({SomeDoc.name:'foobar'}))
-    except ConnectionFailure, err:
+    except ConnectionFailure as err:
         raise SkipTest("SSL may not be enabled on mongodb server: %r" % err)
 
 

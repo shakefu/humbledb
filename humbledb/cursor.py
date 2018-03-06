@@ -16,7 +16,10 @@ class Cursor(pymongo.cursor.Cursor):
 
     def next(self):
         doc = super(Cursor, self).next()
-        return self._doc_cls(doc)
+        doc = self._doc_cls(doc)
+        return doc
+
+    __next__ = next
 
     def __getitem__(self, index):
         doc = super(Cursor, self).__getitem__(index)

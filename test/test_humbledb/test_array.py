@@ -1,5 +1,7 @@
 import random
 
+from six.moves import xrange
+
 from humbledb import Document
 from humbledb.array import Array
 from test.util import (database_name, DBTest, ok_, eq_, enable_sharding,
@@ -293,7 +295,7 @@ def test_getitem_works_for_slices():
         eq_(t[1:2], [3, 4, 5])
         eq_(t[0:2], [0, 1, 2, 3, 4, 5])
         eq_(t[2:4], [6, 7, 8, 9])
-        eq_(t[0:100], range(10))
+        eq_(t[0:100], list(range(10)))
 
 
 @raises(TypeError)

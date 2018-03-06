@@ -1,6 +1,9 @@
 """
 """
+import six
 import pymongo
+
+from humbledb import _version
 
 
 class Cursor(pymongo.cursor.Cursor):
@@ -14,8 +17,16 @@ class Cursor(pymongo.cursor.Cursor):
     _doc_cls = dict
 
     def next(self):
-        doc = super(Cursor, self).next()
-        return self._doc_cls(doc)
+        if six.PY3 and _version._gte('3'):
+            doc = super().next()
+        elif six.PY3 and _version._lt('3'):
+            doc = super().__next__()
+        else:
+            doc = super(Cursor, self).next()
+        doc = self._doc_cls(doc)
+        return doc
+
+    __next__ = next
 
     def __getitem__(self, index):
         doc = super(Cursor, self).__getitem__(index)
@@ -36,7 +47,7 @@ class Cursor(pymongo.cursor.Cursor):
                            "must_use_master", "uuid_subtype", "query_flags",
                            "kwargs")
         more_values_to_clone = ('_doc_cls',)
-        data = dict((k, v) for k, v in self.__dict__.iteritems()
+        data = dict((k, v) for k, v in six.iteritems(self.__dict__)
                     if (k.startswith('_Cursor__') and k[9:] in values_to_clone)
                     or (k in more_values_to_clone))
         if deepcopy and hasattr(self, '__deepcopy'):

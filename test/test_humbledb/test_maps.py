@@ -1,4 +1,5 @@
 import pytool
+from six.moves import xrange
 
 from humbledb import Document, Embed
 from humbledb.maps import ListMap, DictMap

@@ -7,7 +7,9 @@ import calendar
 import datetime
 from collections import defaultdict
 
+import six
 import pytool
+from six.moves import xrange
 from pytool.lang import classproperty
 
 import humbledb
@@ -121,7 +123,7 @@ class Report(Document):
         :type count: int
 
         """
-        if not isinstance(count, (int, long)):
+        if not isinstance(count, six.integer_types):
             raise ValueError("'count' must be int or long, got %r instead" %
                     type(count))
 
@@ -694,7 +696,7 @@ class ReportQuery(object):
                     tzinfo=pytool.time.UTC())
 
         # If it's an integer, we have to handle it depending on the interval
-        if isinstance(index, (int, long)):
+        if isinstance(index, six.integer_types):
             now = now or pytool.time.utcnow()
             return self._coerce_int(index, now, stop)
 
@@ -923,7 +925,7 @@ def _parse_section(values, interval, stamp):
 
     """
     # If it's a number, we yield it
-    if isinstance(values, (int, long)):
+    if isinstance(values, six.integer_types):
         yield stamp, values
     else:
         # If it's a list, we iterate over it
@@ -945,7 +947,7 @@ def _parse_section(values, interval, stamp):
             # Get the value we're working with
             value = values[i]
             # If it's a number, yield it
-            if isinstance(value, (int, long)):
+            if isinstance(value, six.integer_types):
                 yield stamp, value
                 continue
             # If it's a list, recursively process it

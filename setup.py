@@ -21,6 +21,7 @@ setup(
             'pymongo >= 2.0.1',
             'pyconfig',
             'pytool >= 3.4.1',
+            'six',
             ],
         test_suite='nose.collector',
         tests_require=[

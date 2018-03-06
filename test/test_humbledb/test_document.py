@@ -1,6 +1,8 @@
+import six
 import mock
 import pytool
 import pyconfig
+from six.moves import xrange
 
 import humbledb
 from humbledb import Mongo, Document, Embed, _version
@@ -510,7 +512,7 @@ def test_embed_retrieval_types():
     eq_(type(doc), Retriever)
     eq_(type(doc['e']), dict)
     eq_(type(doc['e']['e']), dict)
-    eq_(type(doc['e']['e']['a']), unicode)
+    eq_(type(doc['e']['e']['a']), six.text_type)
 
 
 def test_always_id():

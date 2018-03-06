@@ -1,5 +1,7 @@
 import itertools
 
+import six
+
 import humbledb
 from humbledb.errors import NoConnection
 from humbledb import Document, UNSET, _version
@@ -58,6 +60,7 @@ class ArrayMeta(type):
         except NoConnection: pass  # Collection not available yet
 
 
+@six.add_metaclass(ArrayMeta)
 class Array(object):
     """
     HumbleDB Array object. This helps manage paginated array documents in
@@ -72,8 +75,6 @@ class Array(object):
     :param int page_count: Total number of pages that already exist (optional)
 
     """
-    __metaclass__ = ArrayMeta
-
     config_max_size = 100
     """ Soft limit on the maximum number of entries per page. """
 

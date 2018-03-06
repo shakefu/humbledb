@@ -71,6 +71,9 @@ def test_replica_works_for_versions_after_2_4():
     if _version._lt('2.4'):
         raise SkipTest
 
+    if _version._gte('3'):
+        raise SkipTest
+
     with mock.patch('pymongo.MongoReplicaSetClient') as replica:
         class Replica(Mongo):
             config_host = 'localhost'
@@ -179,7 +182,7 @@ def test_mongo_client_with_ssl_after_2_1():
         with SSLMongo:
             SomeDoc.insert({SomeDoc.name:'foobar'})
             ok_(SomeDoc.find({SomeDoc.name:'foobar'}))
-    except ConnectionFailure, err:
+    except ConnectionFailure as err:
         raise SkipTest("SSL may not be enabled on mongodb server: %r" % err)
 
 

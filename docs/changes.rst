@@ -212,7 +212,7 @@ This section contains all the changes that I can remember, by version.
 3.0.2
 -----
 
-- Fix bug with DocumentMeta accidentally getting extra ``name`` attribute, 
+- Fix bug with DocumentMeta accidentally getting extra ``name`` attribute,
   which in turn became available on Document, and would override mapping
   behavior.
 
@@ -250,7 +250,7 @@ This section contains all the changes that I can remember, by version.
 -----
 
 - Fix bug when old version by using pkg_resources.parse_version to check
-  pymongo version. 
+  pymongo version.
 
 2.2.0
 -----
@@ -285,4 +285,3 @@ This section contains all the changes that I can remember, by version.
 -----
 
 - First release fit for public consumption.
-

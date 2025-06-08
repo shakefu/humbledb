@@ -5,6 +5,7 @@ Helpers
 This module contains common helpers which make your life easier.
 
 """
+
 from pytool.lang import UNSET
 
 from humbledb import Mongo
@@ -59,6 +60,7 @@ def auto_increment(database, collection, _id, field="value", increment=1):
     :type increment: int
 
     """
+
     def auto_incrementer():
         """
         Return an auto incremented value.
@@ -67,13 +69,16 @@ def auto_increment(database, collection, _id, field="value", increment=1):
         # Make sure we're executing in a Mongo connection context
         context = Mongo.context
         if not context:
-            raise NoConnection("A connection is required for auto_increment "
-                    "defaults to work correctly.")
+            raise NoConnection(
+                "A connection is required for auto_increment "
+                "defaults to work correctly."
+            )
 
         if context.database:
             if context.database.name != database:
-                raise DatabaseMismatch("auto_increment database %r does not "
-                        "match connection database %r")
+                raise DatabaseMismatch(
+                    "auto_increment database %r does not match connection database %r"
+                )
 
             # If we have a default database it should already be available
             db = context.database
@@ -82,23 +87,26 @@ def auto_increment(database, collection, _id, field="value", increment=1):
             db = context.connection[database]
 
         # We just use this directly, instead of using a Document helper
-        doc = db[collection].find_and_modify({'_id': _id}, {'$inc': {field:
-            increment}}, new=True, upsert=True)
+        doc = db[collection].find_and_modify(
+            {"_id": _id}, {"$inc": {field: increment}}, new=True, upsert=True
+        )
 
         # Return the value
         if not doc:
             # TBD shakefu: Maybe a more specific error here?
-            raise RuntimeError("Could not get new auto_increment value for "
-                    "%r.%r : %r" % (database, collection, _id))
+            raise RuntimeError(
+                "Could not get new auto_increment value for "
+                "%r.%r : %r" % (database, collection, _id)
+            )
 
-        value = doc.get('value', UNSET)
+        value = doc.get("value", UNSET)
         if value is UNSET:
             # TBD shakefu: Maybe a more specific error here?
-            raise RuntimeError("Could not get new auto_increment value for "
-                    "%r.%r : %r" % (database, collection, _id))
+            raise RuntimeError(
+                "Could not get new auto_increment value for "
+                "%r.%r : %r" % (database, collection, _id)
+            )
 
         return value
 
     return auto_incrementer
-
-

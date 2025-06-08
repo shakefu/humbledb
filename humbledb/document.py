@@ -1,63 +1,64 @@
-"""
-"""
+""" """
+
 import logging
 from functools import wraps
 
-import six
-import pymongo
 import pyconfig
-from six.moves import xrange
+import pymongo
 from pytool.lang import UNSET
 
 from humbledb import _version
-from humbledb.index import Index
-from humbledb.mongo import Mongo
 from humbledb.cursor import Cursor
-from humbledb.maps import DictMap, NameMap, ListMap
-from humbledb.errors import NoConnection, MissingConfig, DatabaseMismatch
+from humbledb.errors import DatabaseMismatch, MissingConfig, NoConnection
+from humbledb.index import Index
+from humbledb.maps import DictMap, ListMap, NameMap
+from humbledb.mongo import Mongo
 
 _ = None
-COLLECTION_METHODS = set([_ for _ in dir(pymongo.collection.Collection) if not
-    _.startswith('_') and callable(getattr(pymongo.collection.Collection, _))])
-del _ # This is necessary since _ lingers in the module namespace otherwise
+COLLECTION_METHODS = set(
+    [
+        _
+        for _ in dir(pymongo.collection.Collection)
+        if not _.startswith("_") and callable(getattr(pymongo.collection.Collection, _))
+    ]
+)
+del _  # This is necessary since _ lingers in the module namespace otherwise
 
 
-class Embed(six.text_type):
-    """ This class is used to map attribute names on embedded subdocuments.
+class Embed(str):
+    """This class is used to map attribute names on embedded subdocuments.
 
-        Example usage::
+    Example usage::
 
-            class MyDoc(Document):
-                config_database = 'db'
-                config_collection = 'example'
+        class MyDoc(Document):
+            config_database = 'db'
+            config_collection = 'example'
 
-                embed = Embed('e')
-                embed.val = 'v'
-                embed.time = 't'
+            embed = Embed('e')
+            embed.val = 'v'
+            embed.time = 't'
 
     """
-    def __new__(cls, value=''):
-        if six.PY3:
-            return super().__new__(cls, value)
-        else:
-            return super(Embed, cls).__new__(cls, value)
+
+    def __new__(cls, value=""):
+        return super().__new__(cls, value)
 
     def as_name_map(self, base_name):
-        """ Return this object mapped onto :class:`~humbledb.maps.NameMap`
-        objects. """
+        """Return this object mapped onto :class:`~humbledb.maps.NameMap`
+        objects."""
         name_map = NameMap(base_name)
 
         for name, value in self.__dict__.items():
             # Skip most everything
-            if not isinstance(value, six.string_types):
+            if not isinstance(value, str):
                 continue
             # Skip private stuff
-            if name.startswith('_'):
+            if name.startswith("_"):
                 continue
 
             # Concatonate names
             if base_name:
-                cname = base_name + '.' + value
+                cname = base_name + "." + value
 
             # Recursively map
             if isinstance(value, Embed):
@@ -70,16 +71,16 @@ class Embed(six.text_type):
         return name_map
 
     def as_reverse_name_map(self, base_name):
-        """ Return this object mapped onto reverse-lookup
-        :class:`~humbledb.maps.NameMap` objects. """
+        """Return this object mapped onto reverse-lookup
+        :class:`~humbledb.maps.NameMap` objects."""
         name_map = NameMap(base_name)
 
         for name, value in self.__dict__.items():
             # Skip most everything
-            if not isinstance(value, six.string_types):
+            if not isinstance(value, str):
                 continue
             # Skip private stuff
-            if name.startswith('_'):
+            if name.startswith("_"):
                 continue
 
             # Recursively map
@@ -95,10 +96,11 @@ class Embed(six.text_type):
 
 
 class CollectionAttribute(object):
-    """ Acts as the collection attribute. Refuses to be read unless the
-        the executing code is in a :class:`Mongo` context or has already called
-        :meth:`Mongo.start`.
+    """Acts as the collection attribute. Refuses to be read unless the
+    the executing code is in a :class:`Mongo` context or has already called
+    :meth:`Mongo.start`.
     """
+
     def __get__(self, instance, owner):
         self = instance or owner
         database = self.config_database
@@ -109,19 +111,21 @@ class CollectionAttribute(object):
         if Mongo.context:
             db = Mongo.context.database
             if db and db.name != database:
-                raise DatabaseMismatch("This document is configured for "
-                        "database %r, while the connection is using %r")
+                raise DatabaseMismatch(
+                    "This document is configured for "
+                    "database %r, while the connection is using %r"
+                )
             return Mongo.context.connection[database][collection]
-        raise NoConnection("'collection' unavailable without connection "
-                "context")
+        raise NoConnection("'collection' unavailable without connection context")
 
 
 class DocumentMeta(type):
-    """ Metaclass for Documents. """
-    _ignore_attributes = set(['__test__'])
+    """Metaclass for Documents."""
+
+    _ignore_attributes = set(["__test__"])
     _collection_methods = COLLECTION_METHODS
-    _wrapped_methods = set(['find', 'find_one', 'find_and_modify'])
-    _wrapped_doc_methods = set(['find_one', 'find_and_modify'])
+    _wrapped_methods = set(["find", "find_one", "find_and_modify"])
+    _wrapped_doc_methods = set(["find_one", "find_and_modify"])
     _update = None
 
     # Helping pylint with identifying class attributes
@@ -129,18 +133,36 @@ class DocumentMeta(type):
 
     def __new__(mcs, cls_name, bases, cls_dict):
         # Don't process Document superclass
-        if cls_name == 'Document' and bases == (dict,):
+        if cls_name == "Document" and bases == (dict,):
             return type.__new__(mcs, cls_name, bases, cls_dict)
 
         # Attribute names that are configuration settings
-        config_names = set(['config_database', 'config_collection',
-            'config_indexes'])
+        config_names = set(["config_database", "config_collection", "config_indexes"])
 
         # Attribute names that conflict with the dict base class
-        bad_names = mcs._collection_methods | set(['clear', 'collection',
-            'copy', 'fromkeys', 'get', 'has_key', 'items', 'iteritems',
-            'iterkeys', 'itervalues', 'keys', 'pop', 'popitem', 'setdefault',
-            'update', 'values', 'viewitems', 'viewkeys', 'viewvalues'])
+        bad_names = mcs._collection_methods | set(
+            [
+                "clear",
+                "collection",
+                "copy",
+                "fromkeys",
+                "get",
+                "has_key",
+                "items",
+                "iteritems",
+                "iterkeys",
+                "itervalues",
+                "keys",
+                "pop",
+                "popitem",
+                "setdefault",
+                "update",
+                "values",
+                "viewitems",
+                "viewkeys",
+                "viewvalues",
+            ]
+        )
 
         # Merge inherited name_maps and saved defaults
         name_map = NameMap()
@@ -148,22 +170,18 @@ class DocumentMeta(type):
         saved_defaults = {}
         for base in reversed(bases):
             if issubclass(base, Document):
-                name_map.merge(getattr(base, '_name_map', NameMap()))
-                reverse_name_map.merge(getattr(base, '_reverse_name_map',
-                    NameMap()))
-                saved_defaults.update(getattr(base, '_saved_defaults', {}))
+                name_map.merge(getattr(base, "_name_map", NameMap()))
+                reverse_name_map.merge(getattr(base, "_reverse_name_map", NameMap()))
+                saved_defaults.update(getattr(base, "_saved_defaults", {}))
 
         # Always have an _id attribute
-        if '_id' not in cls_dict and '_id' not in name_map:
-            cls_dict['_id'] = '_id'
+        if "_id" not in cls_dict and "_id" not in name_map:
+            cls_dict["_id"] = "_id"
 
         # Iterate over the names in `cls_dict` looking for attributes whose
         # values are string literals or `NameMap` subclasses. These attributes
         # will be mapped to document keys where the key is the value
-        if six.PY3:
-            cls_keys = list(cls_dict)
-        else:
-            cls_keys = cls_dict.keys()
+        cls_keys = list(cls_dict)
         for name in cls_keys:
             # Raise error on bad attribute names
             if name in bad_names:
@@ -172,10 +190,10 @@ class DocumentMeta(type):
             if name in config_names:
                 continue
             # Skip most everything
-            if not isinstance(cls_dict[name], (six.string_types, tuple)):
+            if not isinstance(cls_dict[name], (str, tuple)):
                 continue
             # Skip private stuff
-            if name.startswith('_') and name != '_id':
+            if name.startswith("_") and name != "_id":
                 continue
 
             value = cls_dict.get(name)
@@ -189,7 +207,7 @@ class DocumentMeta(type):
                     continue
                 value, default = value
                 # Check that the tuple's first value is a string key
-                if not isinstance(value, six.string_types):
+                if not isinstance(value, str):
                     continue
                 # If the default is a callable, it's a saved default value, so
                 # we memoize it for later
@@ -216,26 +234,26 @@ class DocumentMeta(type):
             reverse_name_map[value] = reverse_value
 
         # Create _*name_map attributes
-        cls_dict['_name_map'] = name_map
-        cls_dict['_reverse_name_map'] = reverse_name_map
+        cls_dict["_name_map"] = name_map
+        cls_dict["_reverse_name_map"] = reverse_name_map
 
         # Create collection attribute
-        cls_dict['collection'] = CollectionAttribute()
+        cls_dict["collection"] = CollectionAttribute()
 
         # Create saved default value attribute
-        cls_dict['_saved_defaults'] = saved_defaults
+        cls_dict["_saved_defaults"] = saved_defaults
 
         # Create the class
         cls = type.__new__(mcs, cls_name, bases, cls_dict)
 
         # Check all the indexes
-        indexes = getattr(cls, 'config_indexes', None)
+        indexes = getattr(cls, "config_indexes", None)
         if indexes is not None:
             if not isinstance(indexes, list):
                 raise TypeError("'config_indexes' must be a list")
-            for i in xrange(len(indexes)):
+            for i in range(len(indexes)):
                 index = indexes[i]
-                if isinstance(index, six.string_types):
+                if isinstance(index, str):
                     indexes[i] = Index(index)
                     continue
                 elif isinstance(index, Index):
@@ -257,7 +275,7 @@ class DocumentMeta(type):
             return value
 
         # Check if we have a mapped attribute name
-        name_map = object.__getattribute__(cls, '_name_map')
+        name_map = object.__getattribute__(cls, "_name_map")
         if name in name_map:
             return name_map[name]
 
@@ -265,31 +283,33 @@ class DocumentMeta(type):
         return object.__getattribute__(cls, name)
 
     def _wrap(cls, func):
-        """ Wraps ``func`` to ensure that it has the as_class keyword
-            argument set to ``cls``. Also guarantees indexes.
+        """Wraps ``func`` to ensure that it has the as_class keyword
+        argument set to ``cls``. Also guarantees indexes.
 
-            :param function func: Function to wrap.
+        :param function func: Function to wrap.
 
         """
         # We have to handle find_and_modify separately because it doesn't take
         # a convenient as_class keyword argument, which is really too bad.
         if func.__name__ in cls._wrapped_doc_methods:
+
             @wraps(func)
             def doc_wrapper(*args, **kwargs):
-                """ Wrapper function to guarantee object typing and indexes. """
+                """Wrapper function to guarantee object typing and indexes."""
                 cls._ensure_indexes()
                 doc = func(*args, **kwargs)
                 # If doc is not iterable (e.g. None), then this will error
                 if doc:
                     doc = cls(doc)
                 return doc
+
             return doc_wrapper
 
         # If we've made it this far, it's not find_and_modify, and we can do a
         # "normal" wrap.
         @wraps(func)
         def cursor_wrapper(*args, **kwargs):
-            """ Wrapper function to guarantee indexes and object typing. """
+            """Wrapper function to guarantee indexes and object typing."""
             cls._ensure_indexes()
             # Get the cursor
             cursor = func(*args, **kwargs)
@@ -313,17 +333,23 @@ class DocumentMeta(type):
         _version._clean(kwargs)
         return cls.collection.update(*args, **kwargs)
 
-    def _get_update(cls): return cls._update or cls._wrap_update
-    def _set_update(cls, value): cls._update = value
-    def _del_update(cls): cls._update = None
+    def _get_update(cls):
+        return cls._update or cls._wrap_update
+
+    def _set_update(cls, value):
+        cls._update = value
+
+    def _del_update(cls):
+        cls._update = None
+
     update = property(_get_update, _set_update, _del_update)
 
     def mapped_keys(cls):
-        """ Return a list of the mapped keys. """
+        """Return a list of the mapped keys."""
         return cls._reverse_name_map.mapped()
 
     def mapped_attributes(cls):
-        """ Return a list of the mapped attributes. """
+        """Return a list of the mapped attributes."""
         return cls._name_map.mapped()
 
     def save(cls, *args, **kwargs):
@@ -341,7 +367,7 @@ class DocumentMeta(type):
 
         """
         _version._clean(kwargs)
-        if args and kwargs.get('manipulate', True):
+        if args and kwargs.get("manipulate", True):
             cls._ensure_saved_defaults(args[0])
 
         return cls.collection.save(*args, **kwargs)
@@ -361,7 +387,7 @@ class DocumentMeta(type):
 
         """
         _version._clean(kwargs)
-        if args and kwargs.get('manipulate', True):
+        if args and kwargs.get("manipulate", True):
             # Insert can take an iterable of documents or a single doc
             doc_or_docs = args[0]
             if isinstance(doc_or_docs, dict):
@@ -373,38 +399,38 @@ class DocumentMeta(type):
         return cls.collection.insert(*args, **kwargs)
 
     def _ensure_saved_defaults(cls, doc):
-        """ Update `doc` to ensure saved defaults exist before saving. """
+        """Update `doc` to ensure saved defaults exist before saving."""
         # Shortcut out if we don't have any
         if not cls._saved_defaults:
             return
         # Iterate over the saved defaults and assign them if they don't already
         # exist
-        for key, value in six.iteritems(cls._saved_defaults):
+        for key, value in cls._saved_defaults.items():
             if key not in doc:
                 doc[key] = value()
 
 
-@six.add_metaclass(DocumentMeta)
-class Document(dict):
-    """ This is the base class for a HumbleDB document. It should not be used
-        directly, but rather configured via subclassing.
+class Document(dict, metaclass=DocumentMeta):
+    """This is the base class for a HumbleDB document. It should not be used
+    directly, but rather configured via subclassing.
 
-        Example subclass::
+    Example subclass::
 
-            class BlogPost(Document):
-                config_database = 'db'
-                config_collection = 'example'
+        class BlogPost(Document):
+            config_database = 'db'
+            config_collection = 'example'
 
-                meta = Embed('m')
-                meta.tags = 't'
-                meta.slug = 's'
-                meta.published = 'p'
+            meta = Embed('m')
+            meta.tags = 't'
+            meta.slug = 's'
+            meta.published = 'p'
 
-                author = 'a'
-                title = 't'
-                body = 'b'
+            author = 'a'
+            title = 't'
+            body = 'b'
 
     """
+
     collection = None
     """ :class:`pymongo.collection.Collection` instance for this document. """
 
@@ -417,22 +443,22 @@ class Document(dict):
 
     def __repr__(self):
         return "{}({})".format(
-                self.__class__.__name__,
-                super(Document, self).__repr__())
+            self.__class__.__name__, super(Document, self).__repr__()
+        )
 
     def for_json(self):
-        """ Return this document as a dictionary, with short key names mapped
-            to long names. This method is used by :meth:`pytools.json.as_json`.
+        """Return this document as a dictionary, with short key names mapped
+        to long names. This method is used by :meth:`pytools.json.as_json`.
         """
         # Get the reverse mapped keys
-        reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
+        reverse_name_map = object.__getattribute__(self, "_reverse_name_map")
 
         # Set saved default values if they aren't already
         # This has to be called on the class itself, not the instance
         type(self)._ensure_saved_defaults(self)
 
         def mapper(doc, submap):
-            """ Maps `doc` keys with the given `submap` substitution map. """
+            """Maps `doc` keys with the given `submap` substitution map."""
             copy = {}
 
             # A bit of trickiness here to get the default values that aren't
@@ -440,11 +466,12 @@ class Document(dict):
             # `Document` subclass because right now defaults can only exist at
             # the top level document
             if isinstance(doc, Document):
-                name_map = object.__getattribute__(doc, '_name_map')
+                name_map = object.__getattribute__(doc, "_name_map")
                 # The name map has no knowledge of the attribute key names, so
                 # we have to use the reverse name map to get those
-                defaults = {reverse_name_map[k]: v for k, v in
-                        six.iteritems(name_map._defaults())}
+                defaults = {
+                    reverse_name_map[k]: v for k, v in name_map._defaults().items()
+                }
                 copy.update(defaults)
 
             for key, value in doc.items():
@@ -465,9 +492,9 @@ class Document(dict):
             return copy
 
         def map_list(values, submap):
-            """ Maps `values` against `submap`. """
+            """Maps `values` against `submap`."""
             values = values[:]
-            for i in xrange(len(values)):
+            for i in range(len(values)):
                 value = values[i]
                 if isinstance(value, dict):
                     # Recursively map items in a dictionary
@@ -481,9 +508,9 @@ class Document(dict):
 
     def __getattr__(self, name):
         # Get the mapped attributes
-        name_map = object.__getattribute__(self, '_name_map')
-        reverse_name_map = object.__getattribute__(self, '_reverse_name_map')
-        saved_defaults = object.__getattribute__(self, '_saved_defaults')
+        name_map = object.__getattribute__(self, "_name_map")
+        reverse_name_map = object.__getattribute__(self, "_reverse_name_map")
+        saved_defaults = object.__getattribute__(self, "_saved_defaults")
         # If the attribute is mapped, map it!
         if name in name_map:
             # name_map is a dict key and potentially a NameMap too here
@@ -499,12 +526,10 @@ class Document(dict):
                 # layers for unmapped items
                 # If it's a dict, we need to keep mapping subkeys
                 if isinstance(value, dict):
-                    value = DictMap(value, name_map, self, key,
-                            reverse_name_map)
+                    value = DictMap(value, name_map, self, key, reverse_name_map)
                 # If it's a list, we need to keep mapping subkeys
                 elif isinstance(value, list):
-                    value = ListMap(value, name_map, self, key,
-                            reverse_name_map)
+                    value = ListMap(value, name_map, self, key, reverse_name_map)
                 return value
             elif isinstance(name_map, NameMap):
                 if key in saved_defaults:
@@ -527,7 +552,7 @@ class Document(dict):
 
     def __setattr__(self, name, value):
         # Get the mapped attributes
-        name_map = object.__getattribute__(self, '_name_map')
+        name_map = object.__getattribute__(self, "_name_map")
         # If it's mapped, let's map it!
         if name in name_map:
             key = name_map[name]
@@ -542,7 +567,7 @@ class Document(dict):
 
     def __delattr__(self, name):
         # Get the mapped attributes
-        name_map = object.__getattribute__(self, '_name_map')
+        name_map = object.__getattribute__(self, "_name_map")
         # If we have the key, we delete it
         if name in name_map:
             key = name_map[name]
@@ -555,34 +580,34 @@ class Document(dict):
 
     @classmethod
     def _ensure_indexes(cls):
-        """ Guarantees indexes are created once per connection instance. """
-        ensured = getattr(cls, '_ensured', None)
+        """Guarantees indexes are created once per connection instance."""
+        ensured = getattr(cls, "_ensured", None)
         if ensured:
             return
 
         if cls.config_indexes:
             for index in cls.config_indexes:
-                logging.getLogger(__name__).info("Ensuring index: {}"
-                        .format(index))
+                logging.getLogger(__name__).info("Ensuring index: {}".format(index))
                 if isinstance(index, Index):
                     index.ensure(cls)
                 else:  # pragma: no cover
                     # This code is no longer reachable with the new Indexes,
                     # but I don't want to remove it yet
-                    caching_key = 'cache_for' if _version._gte('2.3') else 'ttl'
+                    caching_key = "cache_for" if _version._gte("2.3") else "ttl"
                     kwargs = {caching_key: (60 * 60 * 24)}
-                    cls.collection.ensure_index(getattr(cls, index),
-                            background=True, **kwargs)
+                    cls.collection.ensure_index(
+                        getattr(cls, index), background=True, **kwargs
+                    )
 
         logging.getLogger(__name__).info("Indexing ensured.")
         cls._ensured = True
 
         # Create a reload hook for the first time we run
         if ensured is None:
+
             @pyconfig.reload_hook
             def _reload():
-                """ Allow index recreation if configuration settings change via
-                    pyconfig.
+                """Allow index recreation if configuration settings change via
+                pyconfig.
                 """
                 cls._ensured = False
-

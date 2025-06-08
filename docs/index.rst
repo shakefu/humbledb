@@ -19,7 +19,7 @@ HumbleDB: MongoDB micro-ODM
 ===========================
 
 HumbleDB is a thin wrapper around Pymongo_ for MongoDB_ that is designed to
-make working with flexible schema documents easy and readable.  
+make working with flexible schema documents easy and readable.
 
 * **Readable:** Short document keys can be mapped to long attribute
   names to keep document size small and efficient, while providing completely
@@ -73,7 +73,7 @@ power and flexibility of Pymongo underneath. It's called "Humble" because
    ...     description = 'd'
    ...     # Same for the 'v' key and the value attribute
    ...     value = 'v'
-   ...     
+   ...
    >>> # Create a new empty document
    >>> doc = HumbleDoc()
    >>> # Set some values in the document
@@ -83,7 +83,7 @@ power and flexibility of Pymongo underneath. It's called "Humble" because
    >>> with Mongo:
    ...     # The insert method (and others) are the same as the pymongo methods
    ...     HumbleDoc.insert(doc)
-   ...     
+   ...
    >>> # Newly created documents will have their _id field set, and you can see
    >>> # what the raw document would look like in MongoDB
    >>> doc
@@ -92,7 +92,7 @@ power and flexibility of Pymongo underneath. It's called "Humble" because
 
 .. rubric:: What's going on here?
 
-* ``config_database = 'humble'`` - This tells the document that it's stored 
+* ``config_database = 'humble'`` - This tells the document that it's stored
   in the ``'humble'`` database.
 * ``config_collection = 'examples'`` - This tells the document that it's part
   of the ``'examples'`` collection.
@@ -102,7 +102,7 @@ power and flexibility of Pymongo underneath. It's called "Humble" because
   ``'v'``.
 * ``with Mongo:`` - This :class:`Mongo` context manager tells the
   document which MongoDB connection to use (see :ref:`Connecting to MongoDB
-  <connecting>`). 
+  <connecting>`).
 * ``HumbleDoc.insert(doc)`` - This inserts ``doc`` into the HumbleDoc
   collection (see :ref:`Working with a Collection <collection-methods>`).
 
@@ -126,7 +126,7 @@ User's Guide
    changes
 
 .. include:: ../LICENSE.rst
-   
+
 
 Indices and tables
 ==================
@@ -134,4 +134,3 @@ Indices and tables
 * :ref:`genindex`
 * :ref:`modindex`
 * :ref:`search`
-

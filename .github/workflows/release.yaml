@@ -1,0 +1,67 @@
+---
+name: Release
+
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release
+
+jobs:
+  ci:
+    name: CI
+    uses: ./.github/workflows/ci.yaml
+
+  release:
+    name: Release
+    needs: ci
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      issues: write
+      pull-requests: write
+      id-token: write
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v5
+        with:
+          python-version-file: ".python-version"
+      - name: Install uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          version: "0.7.12"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Install dependencies
+        run: uv sync --locked --all-extras --dev
+      - name: Find version
+        id: version
+        uses: open-turo/actions-release/semantic-release@4d8a6b6aa2d051e7dba0429d8d08beef827b5ccd # v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          dry-run: true
+          ci: false
+      - name: Release check
+        if: steps.version.outputs.new-release-published != 'true'
+        run: |
+          echo "::notice:: No new release version!"
+          exit 1
+      - name: Update version
+        run: uv version ${{ steps.version.outputs.new-release-version }}
+      - name: Commit & push version
+        uses: actions-js/push@master
+        with:
+          message: "chore: ${{ steps.version.outputs.new-release-version }} [skip actions]"
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+      - name: Build package
+        run: |
+          uv build
+      - name: Publish to PyPI
+        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # release/v1
+      - name: Release
+        uses: open-turo/actions-release/semantic-release@4d8a6b6aa2d051e7dba0429d8d08beef827b5ccd # v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}

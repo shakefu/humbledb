@@ -26,7 +26,7 @@ Quick Example
    ...     config_collection = 'testdoc'
    ...     test_key = 't'
    ...     other_key = 'o'
-   ...     
+   ...
    >>> # When you create a Document instance, you can set its keys via any
    >>> # mapped attributes you create
    >>> doc = TestDoc()
@@ -45,10 +45,10 @@ Quick Example
    >>> # The Mongo class manages database connection and is a context manager
    >>> with Mongo:
    ...     TestDoc.insert(doc)
-   ...     
+   ...
    >>> with Mongo:
    ...     found = TestDoc.find_one()
-   ...     
+   ...
    >>> found
    TestDoc({u'_id': ObjectId('50ad81586112797f89b99606'), u't': u'Hello', u'o': u'World'})
    >>> doc
@@ -77,4 +77,3 @@ Contributors
 
 * `shakefu <https://github.com/shakefu>`_ (Creator, Maintainer)
 * `paulnues <https://github.com/paulnues>`_
-

@@ -1067,6 +1067,3 @@ maximum array size for any single document.
        comments.remove(spec)  # Remove all entries matching `spec`
 
        comments.clear()  # Remove all entries
-
-
-

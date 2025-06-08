@@ -1,0 +1,128 @@
+---
+name: CI
+
+on:
+  # Allow this config to be reused by other workflows in the repo
+  workflow_call:
+  pull_request:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.event.number || 'main' }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    name: Release preview
+    runs-on: ubuntu-latest
+    if: github.event_name == 'pull_request'
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        with:
+          fetch-depth: 0
+      - name: Generate notes
+        id: notes
+        uses: open-turo/actions-release/semantic-release@4d8a6b6aa2d051e7dba0429d8d08beef827b5ccd # v4
+        with:
+          branches: ${{ github.head_ref }}
+          override-github-ref-name: ${{ github.head_ref }}
+          dry-run: true
+          ci: false
+      - name: Find Comment
+        uses: peter-evans/find-comment@a54c31d7fa095754bfef525c0c8e5e5674c4b4b1 # v2
+        id: find
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          body-includes: release-notes-preview
+      - name: Comment preview
+        uses: peter-evans/create-or-update-comment@67dcc547d311b736a8e6c5c236542148a47adc3d # v2
+        if: steps.notes.outputs.new-release-notes != ''
+        with:
+          comment-id: ${{ steps.find.outputs.comment-id }}
+          issue-number: ${{ github.event.number }}
+          edit-mode: replace
+          body: |
+            <!-- release-notes-preview -->
+
+            ## Release notes preview
+
+            ${{ steps.notes.outputs.new-release-notes }}
+
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          version: "0.7.12"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - name: Install dependencies
+        run: |
+          uv sync --locked --all-extras --dev
+          uv run pre-commit run -a
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    needs: lint
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11", "3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v5
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Install uv
+        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          version: "0.7.12"
+          python-version: ${{ matrix.python-version }}
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          uv sync --locked --all-extras --dev
+          uv run pytest --cov
+          uv run coveralls
+
+  autoapprove:
+    name: Renovate / Approve
+    needs: [lint, test]
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    if: github.actor == 'renovatebot' || github.actor == 'renovate[bot]'
+    steps:
+      - name: Auto-approve
+        uses: hmarr/auto-approve-action@44888193675f29a83e04faf4002fa8c0b537b1e4 # v3.2.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+  automerge:
+    name: Renovate / Merge
+    needs: autoapprove
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+    if: github.actor == 'renovatebot' || github.actor == 'renovate[bot]'
+    steps:
+      - name: Auto-merge
+        uses: pascalgn/automerge-action@22948e0bc22f0aa673800da838595a3e7347e584 # v0.15.6
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          MERGE_LABELS: dependencies
+          MERGE_METHOD: rebase

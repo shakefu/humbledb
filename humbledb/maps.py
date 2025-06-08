@@ -1,25 +1,18 @@
-"""
-"""
-import six
+""" """
 
 from pytool.lang import UNSET
 from pytool.proxy import DictProxy, ListProxy
 
 
-class NameMap(six.text_type):
-    """ This class is used to map attribute names to document keys internally.
-    """
-    def __new__(cls, value=''):
-        if six.PY3:
-            return super().__new__(cls, value)
-        else:
-            return super(NameMap, cls).__new__(cls, value)
+class NameMap(str):
+    """This class is used to map attribute names to document keys internally."""
 
-    def __init__(self, value=''):
-        self._key = value.split('.')[-1]
+    def __new__(cls, value=""):
+        return super().__new__(cls, value)
+
+    def __init__(self, value=""):
+        self._key = value.split(".")[-1]
         self._default_value = UNSET
-        # TODO: Remove this later after Python3 is working
-        # super(NameMap, self).__init__(value)
 
     @property
     def key(self):
@@ -28,7 +21,7 @@ class NameMap(six.text_type):
         return self._key
 
     def _default(self, doc, key, reverse_name_map):
-        """ Return the default value for this name map. """
+        """Return the default value for this name map."""
         if self._default_value is not UNSET:
             return self._default_value
         # Return an empty dict map to allow sub-key assignment
@@ -44,22 +37,24 @@ class NameMap(six.text_type):
         return key in self.__dict__
 
     def filtered(self):
-        """ Return self.__dict__ minus any private keys. """
-        return {k: v for k, v in self.__dict__.items() if not
-                k.startswith('_')}
+        """Return self.__dict__ minus any private keys."""
+        return {k: v for k, v in self.__dict__.items() if not k.startswith("_")}
 
     def mapped(self):
-        """ Return the mapped attributes. """
+        """Return the mapped attributes."""
         return self.filtered().keys()
 
     def merge(self, other):
-        """ Merges another `.NameMap` instance into this one. """
+        """Merges another `.NameMap` instance into this one."""
         self.__dict__.update(other.filtered())
 
     def _defaults(self):
-        """ Return a dict of default values. """
-        return {n.key: n._default_value for n in self.filtered().values() if
-                isinstance(n, NameMap) and n._default_value is not UNSET}
+        """Return a dict of default values."""
+        return {
+            n.key: n._default_value
+            for n in self.filtered().values()
+            if isinstance(n, NameMap) and n._default_value is not UNSET
+        }
 
     def empty(self):
         """
@@ -70,20 +65,19 @@ class NameMap(six.text_type):
 
         """
         _dict = self.__dict__
-        if (len(_dict) == 2
-                and '_key' in _dict
-                and '_default_value' in _dict):
+        if len(_dict) == 2 and "_key" in _dict and "_default_value" in _dict:
             return True
         return False
 
 
 class DictMap(DictProxy):
-    """ This class is used to map embedded documents to their attribute names.
-        This class ensures that the original document is kept up to sync with
-        the embedded document clones via a reference to the `parent`, which at
-        the highest level is the main document.
+    """This class is used to map embedded documents to their attribute names.
+    This class ensures that the original document is kept up to sync with
+    the embedded document clones via a reference to the `parent`, which at
+    the highest level is the main document.
 
     """
+
     def __init__(self, value, name_map, parent, key, reverse_name_map):
         self._parent = parent
         self._key = key
@@ -97,7 +91,7 @@ class DictMap(DictProxy):
 
     def __getattr__(self, name):
         # Exclude private names from this behavior
-        if name.startswith('_'):
+        if name.startswith("_"):
             return object.__getattribute__(self, name)
 
         if name not in self._name_map:
@@ -134,7 +128,7 @@ class DictMap(DictProxy):
 
     def __setattr__(self, name, value):
         # Exclude private names from this behavior
-        if name.startswith('_'):
+        if name.startswith("_"):
             return object.__setattr__(self, name, value)
 
         if name not in self._name_map:
@@ -152,7 +146,7 @@ class DictMap(DictProxy):
 
     def __delattr__(self, name):
         # Exclude private names from this behavior
-        if name.startswith('_'):
+        if name.startswith("_"):
             return object.__delattr__(self, name)
 
         # If it's not mapped, let's delete it!
@@ -202,7 +196,7 @@ class DictMap(DictProxy):
             super(DictMap, self).__delitem__(key)
 
     def for_json(self):
-        """ Return this suitable for JSON encoding. """
+        """Return this suitable for JSON encoding."""
         mapped = {}
         reverse_name_map = self._reverse_name_map
         # We iterate over the keys contained in this. If a key is in the
@@ -228,7 +222,7 @@ class ListMap(ListProxy):
         super(ListMap, self).__init__(value)
 
     def new(self):
-        """ Create a new embedded document in this list. """
+        """Create a new embedded document in this list."""
         # We start with a new, empty dictionary
         value = {}
         # Append it to ourselves
@@ -237,19 +231,16 @@ class ListMap(ListProxy):
         if not self._name_map.empty():
             # We pass None as the 'key' so that an IndexError would be raised if
             # the dict map tries to modify the parent
-            value = DictMap(value, self._name_map, self, None,
-                    self._reverse_name_map)
+            value = DictMap(value, self._name_map, self, None, self._reverse_name_map)
         return value
 
     def __getitem__(self, index):
         value = super(ListMap, self).__getitem__(index)
         # Only create a new DictMap if we actually map into this list
         if isinstance(value, dict) and not self._name_map.empty():
-            value = DictMap(value, self._name_map, self, None,
-                    self._reverse_name_map)
+            value = DictMap(value, self._name_map, self, None, self._reverse_name_map)
         return value
 
     def for_json(self):
-        """ Return this suitable for JSON encoding. """
+        """Return this suitable for JSON encoding."""
         return list(self)
-

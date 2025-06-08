@@ -1,0 +1,30 @@
+[project]
+name = "humbledb"
+version = "6.0.0"
+description = "HumbleDB - MongoDB Object-Document Mapper"
+readme = "README.md"
+license = "MIT"
+authors = [
+    {name = "Jacob Alheid", email = "shakefu@gmail.com"},
+]
+requires-python = ">=3.9,<4.0"
+dependencies = [
+    "pymongo >= 2.0.1",
+    "pyconfig",
+    "pytool >= 3.4.1",
+]
+
+[dependency-groups]
+dev = [
+    "mock",
+    "pytest>=8.4.0",
+]
+docs = [
+    "sphinx >=7.2.6, <8.0.0",
+    "sphinx-rtd-theme>=2.0.0,<3.0.0",
+    "sphinx-autodoc-typehints >=1.25.2, <2.0.0",
+]
+
+# This is required so setuptools doesn't see other directories as a package
+[tool.setuptools]
+packages = ["humbledb"]

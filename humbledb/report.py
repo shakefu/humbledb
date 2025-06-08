@@ -2,19 +2,17 @@
 Preaggregated reporting
 
 """
-import random
+
 import calendar
 import datetime
+import random
 from collections import defaultdict
 
-import six
 import pytool
-from six.moves import xrange
 from pytool.lang import classproperty
 
 import humbledb
 from humbledb import Document, Embed, Index, _version
-
 
 # Interval and Period constants
 YEAR = 5
@@ -25,12 +23,12 @@ MINUTE = 1
 
 # Constants used for informative string messages
 _PERIOD_NAMES = {
-        YEAR: "YEAR",
-        MONTH: "MONTH",
-        DAY: "DAY",
-        HOUR: "HOUR",
-        MINUTE: "MINUTE",
-        }
+    YEAR: "YEAR",
+    MONTH: "MONTH",
+    DAY: "DAY",
+    HOUR: "HOUR",
+    MINUTE: "MINUTE",
+}
 
 
 class Report(Document):
@@ -38,6 +36,7 @@ class Report(Document):
     A report document.
 
     """
+
     config_period = MONTH
     """ The period for which this report stores data. There will be one
     document created per period for each event. For example, if period is
@@ -47,7 +46,9 @@ class Report(Document):
     """ The intervals at which event counts are recorded. The intervals listed
     here must be less than or equal to the period for this report. """
 
-    config_id_format = "%(event)s@%(year)04d%(month)02d%(day)02d-%(hour)02d:%(minute)02d"
+    config_id_format = (
+        "%(event)s@%(year)04d%(month)02d%(day)02d-%(hour)02d:%(minute)02d"
+    )
     """ The format for the ``_id`` for a report document. If the event is
     placed first in the string, then the documents will be spread more evenly
     on sharding, but an index on ``meta.period`` is needed for range queries.
@@ -60,19 +61,20 @@ class Report(Document):
     attempted, from 0.0 to 1.0. Set this to 0 to disable future preallocation.
     """
 
-    config_indexes = [Index([('meta.period', humbledb.ASC), ('meta.event',
-        humbledb.ASC)])]
+    config_indexes = [
+        Index([("meta.period", humbledb.ASC), ("meta.event", humbledb.ASC)])
+    ]
     """ Default indexes. """
 
-    meta = Embed('u')
-    meta.period = 'p'
-    meta.event = 'e'
+    meta = Embed("u")
+    meta.period = "p"
+    meta.event = "e"
 
-    year = 'Y'
-    month = 'M'
-    day = 'd'
-    hour = 'h'
-    minute = 'm'
+    year = "Y"
+    month = "M"
+    day = "d"
+    hour = "h"
+    minute = "m"
 
     # Mapping of intervals to their document keys. This is used by
     # :meth:`_map_interval`. This has to be created after class declaration so
@@ -95,13 +97,13 @@ class Report(Document):
         """
         period = cls._period(stamp)
         info = {
-                'event': event,
-                'year': period.year,
-                'month': period.month,
-                'day': period.day,
-                'hour': period.hour,
-                'minute': period.minute,
-                }
+            "event": event,
+            "year": period.year,
+            "month": period.month,
+            "day": period.day,
+            "hour": period.hour,
+            "minute": period.minute,
+        }
         return cls.config_id_format % info
 
     @classmethod
@@ -123,13 +125,13 @@ class Report(Document):
         :type count: int
 
         """
-        if not isinstance(count, six.integer_types):
-            raise ValueError("'count' must be int or long, got %r instead" %
-                    type(count))
+        if not isinstance(count, int):
+            raise ValueError("'count' must be int, got %r instead" % type(count))
 
         if stamp and not isinstance(stamp, (datetime.datetime, datetime.date)):
-            raise ValueError("'stamp' must be datetime or date, got %r instead"
-                    % type(stamp))
+            raise ValueError(
+                "'stamp' must be datetime or date, got %r instead" % type(stamp)
+            )
 
         # Get our stamp as UTC time or use the current time
         stamp = pytool.time.as_utc(stamp) if stamp else pytool.time.utcnow()
@@ -138,10 +140,10 @@ class Report(Document):
         # Get the update query
         update = cls._update_query(stamp, count)
         # Get our query doc
-        doc = {'_id': cls.record_id(event, stamp)}
+        doc = {"_id": cls.record_id(event, stamp)}
         _opts = {}
-        if _version._lt('3.0.0'):
-            _opts['safe'] = safe
+        if _version._lt("3.0.0"):
+            _opts["safe"] = safe
         # Update/upsert the document, hooray
         cls.update(doc, update, upsert=True, **_opts)
 
@@ -181,7 +183,7 @@ class Report(Document):
         for interval in cls.config_intervals:
             update.update(cls._update_clause(interval, stamp, count))
 
-        return {'$inc': update}
+        return {"$inc": update}
 
     @classmethod
     def _update_clause(cls, interval, stamp, count=1):
@@ -208,7 +210,7 @@ class Report(Document):
         # Build a dotted key name like 'y.12.25'
         intervals = [0, minute, hour, day, month]
         key = intervals[interval:period] + [cls._map_interval(interval)]
-        key = '.'.join(str(s) for s in reversed(key))
+        key = ".".join(str(s) for s in reversed(key))
 
         return {key: count}
 
@@ -224,13 +226,15 @@ class Report(Document):
         # Memoize the intervals to the class so we don't rebuild this dict
         # with every lookup
         if not cls._intervals:
-            cls._intervals.update({
-                YEAR: cls.year,
-                MONTH: cls.month,
-                DAY: cls.day,
-                HOUR: cls.hour,
-                MINUTE: cls.minute
-                })
+            cls._intervals.update(
+                {
+                    YEAR: cls.year,
+                    MONTH: cls.month,
+                    DAY: cls.day,
+                    HOUR: cls.hour,
+                    MINUTE: cls.minute,
+                }
+            )
         return cls._intervals[interval]
 
     @classmethod
@@ -283,8 +287,8 @@ class Report(Document):
         query, update = cls._preallocate_query(event, stamp)
         try:
             _opts = {}
-            if _version._lt('3.0.0'):
-                _opts['safe'] = True
+            if _version._lt("3.0.0"):
+                _opts["safe"] = True
             # We always want preallocation to be "safe" in order to avoid race
             # conditions with the subsequent update
             cls.update(query, update, upsert=True, **_opts)
@@ -318,7 +322,7 @@ class Report(Document):
         period = cls.config_period
 
         # Build the base query, which is just a lookup against the id
-        query = {'_id': cls.record_id(event, stamp)}
+        query = {"_id": cls.record_id(event, stamp)}
 
         # Start with an empty update clause
         update = {}
@@ -326,7 +330,7 @@ class Report(Document):
             key = cls._map_interval(interval)
             # Update the query to exclude documents which already have a value
             # for each interval key
-            query[key] = {'$exists': 0}
+            query[key] = {"$exists": 0}
             # Update the update clause with the preallocated structures
             update[key] = cls._preallocate_interval(period, interval, stamp)
 
@@ -334,7 +338,7 @@ class Report(Document):
         update[cls.meta.period] = cls._period(stamp)
 
         # Make the update clause a $set
-        update = {'$set': update}
+        update = {"$set": update}
 
         return query, update
 
@@ -374,8 +378,10 @@ class Report(Document):
         elif interval <= MONTH and period == YEAR:
             count = 12 + 1
 
-        return [cls._preallocate_interval(period - 1, interval, stamp, r) for r
-                in xrange(start, count)]
+        return [
+            cls._preallocate_interval(period - 1, interval, stamp, r)
+            for r in range(start, count)
+        ]
 
     @classmethod
     def _period(cls, stamp):
@@ -443,6 +449,7 @@ class ReportQuery(object):
             print 'home', count.timestamp, count
 
     """
+
     def __init__(self, cls, interval):
         self.cls = cls
         self.interval = interval
@@ -452,14 +459,16 @@ class ReportQuery(object):
 
         # We need to get a document key that works best for the interval we're
         # looking for
-        self.query_interval = max([0] + [k for k in self.cls.config_intervals
-            if k <= self.interval])
+        self.query_interval = max(
+            [0] + [k for k in self.cls.config_intervals if k <= self.interval]
+        )
 
         # If the query_interval is equal to 0, it means we can't satisfy the
         # required precision for this query type
         if not self.query_interval:
-            raise ValueError("Unable to satisfy precision: %r" % (
-                _PERIOD_NAMES[self.interval]))
+            raise ValueError(
+                "Unable to satisfy precision: %r" % (_PERIOD_NAMES[self.interval])
+            )
         self.query_key = self.cls._map_interval(self.query_interval)
 
     def __call__(self, event, regex=False, anywhere=False):
@@ -513,12 +522,14 @@ class ReportQuery(object):
         query_key = self.query_key
 
         # Get our results
-        results = self.cls.find(query, {query_key: 1, self.cls.meta.event: 1,
-            self.cls.meta.period: 1}, sort=[(self.cls.meta.period, 1)])
+        results = self.cls.find(
+            query,
+            {query_key: 1, self.cls.meta.event: 1, self.cls.meta.period: 1},
+            sort=[(self.cls.meta.period, 1)],
+        )
 
         # Now we have to parse the results for the maximum ease of consumption
-        results = self._parse_results(results, start, stop, query_key,
-                query_interval)
+        results = self._parse_results(results, start, stop, query_key, query_interval)
 
         # We need to coerce the results according to whether or not we have
         # a distinct event, or we're using a regex query
@@ -546,16 +557,18 @@ class ReportQuery(object):
 
         # The base query looks for any report documents matching the period
         query = {
-                period_key: {'$gte': starting_period},
-                period_key: {'$lte': ending_period},
-                }
+            period_key: {
+                "$gte": starting_period,
+                "$lte": ending_period,
+            },
+        }
 
         # If the event is a regex, we make it a regex query against _id
         event = self.event
         if event and self.regex:
-            if not self.anywhere and not event.startswith('^'):
-                event = '^' + event
-            query['_id'] = {'$regex': event}
+            if not self.anywhere and not event.startswith("^"):
+                event = "^" + event
+            query["_id"] = {"$regex": event}
 
         # Otherwise we just query against the indexed event field
         elif event and not self.regex:
@@ -618,8 +631,7 @@ class ReportQuery(object):
 
             # Iterate over the parsed counts and timestamps, which will come
             # according to the doc's interval
-            for stamp, count in _parse_section(values, key_interval,
-                    doc_period):
+            for stamp, count in _parse_section(values, key_interval, doc_period):
                 # Ensure we only take values from within the query frame
                 if stamp < start:
                     # If we're before the start, we skip
@@ -692,11 +704,10 @@ class ReportQuery(object):
 
         # If it's a date, make a datetime out of it
         if isinstance(index, datetime.date):
-            return datetime.datetime(*index.timetuple()[:6],
-                    tzinfo=pytool.time.UTC())
+            return datetime.datetime(*index.timetuple()[:6], tzinfo=pytool.time.UTC())
 
         # If it's an integer, we have to handle it depending on the interval
-        if isinstance(index, six.integer_types):
+        if isinstance(index, int):
             now = now or pytool.time.utcnow()
             return self._coerce_int(index, now, stop)
 
@@ -749,8 +760,7 @@ class ReportQuery(object):
                 return _relative_period(MONTH, now, 1)
 
             self._check_range(index, 1, end_of_month + 1)
-            return datetime.datetime(now.year, now.month, index,
-                    tzinfo=now.tzinfo)
+            return datetime.datetime(now.year, now.month, index, tzinfo=now.tzinfo)
 
         if interval == HOUR:
             if stop and index == 24:
@@ -759,8 +769,9 @@ class ReportQuery(object):
                 return _relative_period(DAY, now, 1)
 
             self._check_range(index, 0, 24)
-            return datetime.datetime(now.year, now.month, now.day, index,
-                    tzinfo=now.tzinfo)
+            return datetime.datetime(
+                now.year, now.month, now.day, index, tzinfo=now.tzinfo
+            )
 
         if interval == MINUTE:
             if stop and index == 60:
@@ -768,8 +779,9 @@ class ReportQuery(object):
                 # return the start of the next hour
                 return _relative_period(HOUR, now, 1)
             self._check_range(index, 0, 60)
-            return datetime.datetime(now.year, now.month, now.day, now.hour,
-                    index, tzinfo=now.tzinfo)
+            return datetime.datetime(
+                now.year, now.month, now.day, now.hour, index, tzinfo=now.tzinfo
+            )
 
     @staticmethod
     def _check_range(value, minimum, maximum):
@@ -785,8 +797,9 @@ class ReportQuery(object):
 
         """
         if value < minimum or value > maximum:
-            raise IndexError("Value %r out of range [%r, %r]" % (value,
-                minimum, maximum))
+            raise IndexError(
+                "Value %r out of range [%r, %r]" % (value, minimum, maximum)
+            )
 
 
 class ReportCount(int):
@@ -800,6 +813,7 @@ class ReportCount(int):
     :type timestamp: datetime.datetime
 
     """
+
     def __new__(cls, value, timestamp):
         instance = super(ReportCount, cls).__new__(cls, value)
         instance.timestamp = timestamp
@@ -867,11 +881,11 @@ def _relative_period(period, stamp, diff):
 
     # Hours is just seconds, right?
     if period == HOUR:
-        return _period(period, stamp + datetime.timedelta(seconds=diff*60*60))
+        return _period(period, stamp + datetime.timedelta(seconds=diff * 60 * 60))
 
     # Minutes are also seconds
     if period == MINUTE:
-        return _period(period, stamp + datetime.timedelta(seconds=diff*60))
+        return _period(period, stamp + datetime.timedelta(seconds=diff * 60))
 
     # This algorithm for calculating a relative date is borrowed in part
     # from relativedelta in the python-dateutil library.
@@ -909,11 +923,13 @@ def _period(period, stamp):
         return pytool.time.floor_day(stamp)
     if period == HOUR:
         seconds = stamp.minute * 60 + stamp.second
-        return stamp - datetime.timedelta(seconds=seconds,
-                microseconds=stamp.microsecond)
+        return stamp - datetime.timedelta(
+            seconds=seconds, microseconds=stamp.microsecond
+        )
     if period == MINUTE:
-        return stamp - datetime.timedelta(seconds=stamp.second,
-                microseconds=stamp.microsecond)
+        return stamp - datetime.timedelta(
+            seconds=stamp.second, microseconds=stamp.microsecond
+        )
 
 
 def _parse_section(values, interval, stamp):
@@ -925,11 +941,11 @@ def _parse_section(values, interval, stamp):
 
     """
     # If it's a number, we yield it
-    if isinstance(values, six.integer_types):
+    if isinstance(values, int):
         yield stamp, values
     else:
         # If it's a list, we iterate over it
-        for i in xrange(len(values)):
+        for i in range(len(values)):
             if interval == MINUTE:
                 stamp = stamp.replace(minute=i)
             elif interval == HOUR:
@@ -947,10 +963,9 @@ def _parse_section(values, interval, stamp):
             # Get the value we're working with
             value = values[i]
             # If it's a number, yield it
-            if isinstance(value, six.integer_types):
+            if isinstance(value, int):
                 yield stamp, value
                 continue
             # If it's a list, recursively process it
             for vals in _parse_section(value, interval - 1, stamp):
                 yield vals
-

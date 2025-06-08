@@ -75,5 +75,3 @@ Helpers
 =======
 
 .. autofunction:: humbledb.helpers.auto_increment
-
-

@@ -18,23 +18,25 @@ See the License for the specific language governing permissions and
 limitations under the License.
 
 """
-__version__ = '6.0.0'
+
+__version__ = "6.0.0"
 
 
 # We only want to allow * imports for the most common classes. If you want
 # anything else, import it directly.
 __all__ = [
-        'Index',
-        'Mongo',
-        'Document',
-        'Embed',
-        ]
+    "Index",
+    "Mongo",
+    "Document",
+    "Embed",
+]
 
 # Shortcut to pytool.lang.UNSET
 from pytool.lang import UNSET
 
 # Shortcuts to pymongo index directions
 import pymongo
+
 DESC = pymongo.DESCENDING
 ASC = pymongo.ASCENDING
 del pymongo  # Clean up the namespace

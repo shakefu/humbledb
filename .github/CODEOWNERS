@@ -1,0 +1,4 @@
+* @shakefu
+
+# Ignore certain files so they can be auto-updated
+.pre-commit-config.yaml

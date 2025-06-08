@@ -18,7 +18,18 @@ pip-log.txt
 
 # Unit test / coverage reports
 .coverage
+.coverage.*
+coverage.xml
+htmlcov/
 .tox
+.nox
+.cache
+.pytest_cache/
+.hypothesis/
+*.cover
+*.py,cover
+.coverage_html/
+.pytest_cache
 
 # Translations
 *.mo
@@ -32,5 +43,5 @@ pip-log.txt
 # Sphinx
 docs/_build
 
-# Ipython Notebooks
-*.ipynb
+# Cursor
+.cursorrules

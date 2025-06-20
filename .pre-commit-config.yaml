@@ -16,10 +16,10 @@ repos:
     hooks:
       - id: prettier
         stages: [pre-commit]
-  # - repo: https://github.com/rhysd/actionlint
-  #   rev: v1.6.17
-  #   hooks:
-  #     - id: actionlint
+  - repo: https://github.com/rhysd/actionlint
+    rev: v1.7.7
+    hooks:
+      - id: actionlint
   # - repo: https://github.com/jumanjihouse/pre-commit-hooks
   #   rev: 3.0.0 # or specific git tag
   #   hooks:
@@ -38,3 +38,8 @@ repos:
       - id: ruff
       # Run the Ruff formatter.
       - id: ruff-format
+  - repo: https://github.com/astral-sh/uv-pre-commit
+    # uv version.
+    rev: 0.7.13
+    hooks:
+      - id: uv-lock

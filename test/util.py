@@ -15,7 +15,7 @@ __all__ = [
     "SkipTest",
     "database_name",
     "DBTest",
-    "enable_sharding",
+    # "enable_sharding",
 ]
 
 
@@ -24,7 +24,7 @@ def database_name():
     return pyconfig.get("humbledb.test.db.name", "humbledb_test")
 
 
-def enable_sharding(collection, key):
+def old_enable_sharding(collection, key):
     """Enable sharding for `collection`."""
     conn = DBTest.connection
     try:

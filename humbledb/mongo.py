@@ -52,8 +52,11 @@ class MongoMeta(type):
                         "descriptor and its value could not be "
                         "retrieved reliably." % name
                     )
-            # Handle replica set connections
-            if _replica:
+            if _version._gte("4.0"):
+                # It's all the same above Pymongo 4.x
+                conn = pymongo.MongoClient
+            elif _replica:
+                # Handle replica set connections
                 if _version._lt("2.1"):
                     raise TypeError("Need pymongo.version >= 2.1 for replica sets.")
                 elif _version._gte("3.0.0"):

@@ -7,14 +7,10 @@ import pytest
 from humbledb import Document, Mongo, _version
 from humbledb.errors import ConnectionFailure, DatabaseMismatch
 
-from ..util import DBTest, database_name
+from ..util import database_name
 
 
-def teardown():
-    DBTest.connection.drop_database(database_name())
-
-
-def test_new():
+def test_new(DBTest):
     assert DBTest == DBTest()
 
 
@@ -32,7 +28,7 @@ def test_missing_config_port():
             config_host = "localhost"
 
 
-def test_reload():
+def test_reload(DBTest):
     with mock.patch.object(DBTest, "_new_connection") as _new_conn:
         pyconfig.reload()
         _new_conn.assert_called_once()
@@ -41,14 +37,14 @@ def test_reload():
     pyconfig.reload()
 
 
-def test_nested_conn():
+def test_nested_conn(DBTest):
     with pytest.raises(RuntimeError):
         with DBTest:
             with DBTest:
                 pass
 
 
-def test_harmless_end():
+def test_harmless_end(DBTest):
     # This shouldn't raise any errors
     DBTest.end()
     DBTest.start()
@@ -105,7 +101,7 @@ def test_replica_errors_for_versions_before_2_1():
             config_replica = "test"
 
 
-def test_reconnect():
+def test_reconnect(DBTest):
     with mock.patch.object(DBTest, "_new_connection") as _new_conn:
         DBTest.reconnect()
         _new_conn.assert_called_once()
@@ -114,32 +110,24 @@ def test_reconnect():
     DBTest.reconnect()
 
 
-def test_mongo_uri_with_database():
+def test_mongo_uri_with_database(mongodb_uri):
     if _version._lt("2.6.0"):
         raise SkipTest("Needs version 2.6.0 or later")
 
-    host = pyconfig.get("humbledb.test.db.host", "localhost")
-    port = pyconfig.get("humbledb.test.db.port", 27017)
-    uri = "mongodb://{}:{}/{}".format(host, port, database_name())
-
     class DBuri(Mongo):
-        config_uri = uri
+        config_uri = mongodb_uri
 
     with DBuri:
         assert DBuri.database.name == database_name()
         assert Mongo.context.database.name == database_name()
 
 
-def test_mongo_uri_database_with_conflict_raises_error():
+def test_mongo_uri_database_with_conflict_raises_error(mongodb_uri):
     if _version._lt("2.6.0"):
         raise SkipTest("Needs version 2.6.0 or later")
 
-    host = pyconfig.get("humbledb.test.db.host", "localhost")
-    port = pyconfig.get("humbledb.test.db.port", 27017)
-    uri = "mongodb://{}:{}/{}".format(host, port, database_name())
-
     class DBuri(Mongo):
-        config_uri = uri
+        config_uri = mongodb_uri
 
     from humbledb import Document
 
@@ -152,25 +140,29 @@ def test_mongo_uri_database_with_conflict_raises_error():
             TestDoc.find()
 
 
-def test_mongo_client_with_ssl_before_2_1():
+def test_mongo_client_with_ssl_before_2_1(mongodb_service):
     if _version._gte("2.1"):
         raise SkipTest("Only test this with version 2.1 or earlier.")
+
+    host, port = mongodb_service
 
     with pytest.raises(TypeError):
 
         class SSLMongo(Mongo):
-            config_host = "localhost"
-            config_port = 27017
+            config_host = host
+            config_port = port
             config_ssl = True
 
 
-def test_mongo_client_with_ssl_after_2_1():
+def test_mongo_client_with_ssl_after_2_1(mongodb_service):
     if _version._lt("2.1"):
         raise SkipTest("This test requires version 2.1 or later.")
 
+    host, port = mongodb_service
+
     class SSLMongo(Mongo):
-        config_host = "localhost"
-        config_port = 27017
+        config_host = host
+        config_port = port
         config_ssl = True
         config_mongo_client = (
             {"serverSelectionTimeoutMS": 300} if _version._gte("3.0") else {}

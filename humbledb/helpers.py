@@ -6,10 +6,11 @@ This module contains common helpers which make your life easier.
 
 """
 
+import pymongo
 from pytool.lang import UNSET
 
 from humbledb import Mongo
-from humbledb.errors import NoConnection, DatabaseMismatch
+from humbledb.errors import DatabaseMismatch, NoConnection
 
 
 def auto_increment(database, collection, _id, field="value", increment=1):
@@ -74,7 +75,7 @@ def auto_increment(database, collection, _id, field="value", increment=1):
                 "defaults to work correctly."
             )
 
-        if context.database:
+        if context.database is not None:
             if context.database.name != database:
                 raise DatabaseMismatch(
                     "auto_increment database %r does not match connection database %r"
@@ -87,8 +88,11 @@ def auto_increment(database, collection, _id, field="value", increment=1):
             db = context.connection[database]
 
         # We just use this directly, instead of using a Document helper
-        doc = db[collection].find_and_modify(
-            {"_id": _id}, {"$inc": {field: increment}}, new=True, upsert=True
+        doc = db[collection].find_one_and_update(
+            {"_id": _id},
+            {"$inc": {field: increment}},
+            return_document=pymongo.ReturnDocument.AFTER,
+            upsert=True,
         )
 
         # Return the value

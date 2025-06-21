@@ -8,15 +8,11 @@ from humbledb.array import Array
 from ..util import DBTest, SkipTest, database_name, enable_sharding
 
 
-class TestArray(Array):
+class ArrayTest(Array):
     config_database = database_name()
     config_collection = "arrays"
     config_max_size = 3
     config_padding = 100
-
-
-def teardown():
-    DBTest.connection.drop_database(database_name())
 
 
 def _word():
@@ -36,14 +32,14 @@ def test_document_without_configuration_works_as_mapper():
 
 
 def test_creates_a_new_page_on_first_insert():
-    t = TestArray("new_page", 0)
+    t = ArrayTest("new_page", 0)
     with DBTest:
         t.append("Test")
         assert t.pages() == 1
 
 
 def test_all_returns_single_insert_ok():
-    t = TestArray("single_insert", 0)
+    t = ArrayTest("single_insert", 0)
     v = "Test"
     with DBTest:
         assert t.append(v) == 1
@@ -51,7 +47,7 @@ def test_all_returns_single_insert_ok():
 
 
 def test_appends_over_max_size_creates_second_page():
-    t = TestArray("appends_second_page", 0)
+    t = ArrayTest("appends_second_page", 0)
     with DBTest:
         assert t.append(_word()) == 1
         assert t.append(_word()) == 1
@@ -62,17 +58,17 @@ def test_appends_over_max_size_creates_second_page():
 
 
 def test_multiple_appends_with_zero_pages_works_ok():
-    t = TestArray("zero_pages", 0)
+    t = ArrayTest("zero_pages", 0)
     with DBTest:
         assert t.append(_word()) == 1
-    t = TestArray("zero_pages", 0)
+    t = ArrayTest("zero_pages", 0)
     with DBTest:
         assert t.append(_word()) == 1
         assert len(t.all()) == 2
 
 
 def test_length_for_single_page_works():
-    t = TestArray("length_single", 0)
+    t = ArrayTest("length_single", 0)
     with DBTest:
         t.append(_word())
         assert t.length() == 1
@@ -83,7 +79,7 @@ def test_length_for_single_page_works():
 
 
 def test_length_for_multiple_pages_works():
-    t = TestArray("length_multi", 0)
+    t = ArrayTest("length_multi", 0)
     with DBTest:
         for i in range(10):
             t.append(_word())
@@ -92,7 +88,7 @@ def test_length_for_multiple_pages_works():
 
 
 def test_remove_works_with_single_page():
-    t = TestArray("remove", 0)
+    t = ArrayTest("remove", 0)
     v = "Test"
     with DBTest:
         t.append(_word())
@@ -104,7 +100,7 @@ def test_remove_works_with_single_page():
 
 
 def test_remove_works_with_multiple_pages():
-    t = TestArray("remove_multi_page", 0)
+    t = ArrayTest("remove_multi_page", 0)
     v = "Test"
     with DBTest:
         for i in range(5):
@@ -120,7 +116,7 @@ def test_remove_works_with_multiple_pages():
 
 
 def test_remove_works_with_embedded_documents():
-    t = TestArray("remove_embedded_docs")
+    t = ArrayTest("remove_embedded_docs")
     with DBTest:
         for i in range(5):
             t.append({"i": i, "k": i})
@@ -130,7 +126,7 @@ def test_remove_works_with_embedded_documents():
 
 
 def test_remove_works_with_complex_embedded_documents_and_dot_notation():
-    t = TestArray("remove_complex_embedded_docs")
+    t = ArrayTest("remove_complex_embedded_docs")
     with DBTest:
         for i in range(5):
             t.append({"foo": "bar", "fnord": {"i": i, "spam": "eggs"}})
@@ -140,20 +136,20 @@ def test_remove_works_with_complex_embedded_documents_and_dot_notation():
 
 
 def test_multiple_removes_maintains_correct_count_with_dupes_on_diff_pages():
-    t = TestArray("remove_count")
+    t = ArrayTest("remove_count")
     with DBTest:
         t.append({"i": 9})
         for i in range(3):
             t.append({"i": i})
         t.append({"i": 9})
         t.remove({"i": 9})
-        pages = list(TestArray.find({"_id": t._id_regex}))
+        pages = list(ArrayTest.find({"_id": t._id_regex}))
         for page in pages:
             assert page.size == len(page.entries)
 
 
 def test_multiple_removes_maintains_correct_count_with_dupes_on_same_page():
-    t = TestArray("remove_count_dupes")
+    t = ArrayTest("remove_count_dupes")
     with DBTest:
         for i in range(3):
             t.append({"i": i})
@@ -162,12 +158,12 @@ def test_multiple_removes_maintains_correct_count_with_dupes_on_same_page():
         assert t.length() == 5
         t.remove({"i": 9})
         assert t.length() == 4
-        pages = list(TestArray.find({"_id": t._id_regex}))
+        pages = list(ArrayTest.find({"_id": t._id_regex}))
         for page in pages:
             assert page.size == len(page.entries)
         t.remove({"i": 9})
         assert t.length() == 3
-        pages = list(TestArray.find({"_id": t._id_regex}))
+        pages = list(ArrayTest.find({"_id": t._id_regex}))
         for page in pages:
             assert page.size == len(page.entries)
         t.remove({"i": 9})
@@ -175,7 +171,7 @@ def test_multiple_removes_maintains_correct_count_with_dupes_on_same_page():
 
 
 def test_remove_one_more_time_just_for_kicks():
-    t = TestArray("never_stop_testing_remove")
+    t = ArrayTest("never_stop_testing_remove")
     with DBTest:
         for i in range(10):
             t.append(i)
@@ -190,8 +186,8 @@ def test_remove_one_more_time_just_for_kicks():
 
 
 def test_sharded_remove_works():
-    t = TestArray("test_sharded_remove")
-    if not enable_sharding(TestArray._page.config_collection, {"_id": 1}):
+    t = ArrayTest("test_sharded_remove")
+    if not enable_sharding(ArrayTest._page.config_collection, {"_id": 1}):
         raise SkipTest
     with DBTest:
         for word in "The quick brown fox jumps over the lazy dog.".split():
@@ -208,8 +204,8 @@ def test_sharded_remove_works():
 
 
 def test_sharded_remove_works_with_embedded_documents():
-    t = TestArray("test_sharded_remove_embedded")
-    if not enable_sharding(TestArray._page.config_collection, {"_id": 1}):
+    t = ArrayTest("test_sharded_remove_embedded")
+    if not enable_sharding(ArrayTest._page.config_collection, {"_id": 1}):
         raise SkipTest
     with DBTest:
         for word in "The quick brown fox jumps over the lazy dog.".split():
@@ -240,7 +236,7 @@ def test_class_errors_if_missing_collection():
 
 
 def test_append_fails_if_page_is_missing():
-    t = TestArray("append_fails_with_missing_page", 0)
+    t = ArrayTest("append_fails_with_missing_page", 0)
     with DBTest:
         t.append(1)
         t._page.remove({t._page._id: t._id_regex})
@@ -249,7 +245,7 @@ def test_append_fails_if_page_is_missing():
 
 
 def test_clear_removes_all_pages():
-    t = TestArray("clear", 0)
+    t = ArrayTest("clear", 0)
     with DBTest:
         for i in range(10):
             t.append(_word())
@@ -261,7 +257,7 @@ def test_clear_removes_all_pages():
 
 
 def test_append_works_after_clearing():
-    t = TestArray("clear_and_append", 0)
+    t = ArrayTest("clear_and_append", 0)
     with DBTest:
         for i in range(10):
             t.append(_word())
@@ -276,7 +272,7 @@ def test_append_works_after_clearing():
 
 
 def test_getitem_works_for_single_page():
-    t = TestArray("getitem_single", 0)
+    t = ArrayTest("getitem_single", 0)
     with DBTest:
         for i in range(10):
             t.append(i)
@@ -288,7 +284,7 @@ def test_getitem_works_for_single_page():
 
 
 def test_getitem_works_for_slices():
-    t = TestArray("getitem_sliced", 0)
+    t = ArrayTest("getitem_sliced", 0)
     with DBTest:
         for i in range(10):
             t.append(i)
@@ -301,26 +297,26 @@ def test_getitem_works_for_slices():
 
 
 def test_getitem_does_not_work_for_extended_slices():
-    t = TestArray("test", 0)
+    t = ArrayTest("test", 0)
     with pytest.raises(TypeError):
         t[0:1:2]
 
 
 def test_getitem_disallows_non_integers():
-    t = TestArray("test", 0)
+    t = ArrayTest("test", 0)
     with pytest.raises(TypeError):
         t["foo"]
 
 
 def test_getitem_raises_indexerror_for_out_of_range_when_empty():
-    t = TestArray("getitem_out_of_range_empty", 0)
+    t = ArrayTest("getitem_out_of_range_empty", 0)
     with DBTest:
         with pytest.raises(IndexError):
             t[0]
 
 
 def test_getitem_raises_indexerror_for_out_of_range():
-    t = TestArray("getitem_out_of_range", 0)
+    t = ArrayTest("getitem_out_of_range", 0)
     with DBTest:
         for i in range(10):
             t.append(i)
@@ -333,33 +329,33 @@ def test_getitem_raises_indexerror_for_out_of_range():
 
 
 def test_find_gives_us_a_working_find():
-    t = TestArray("find", 0)
+    t = ArrayTest("find", 0)
     with DBTest:
-        assert list(TestArray.find({"_id": t._id_regex})) == []
+        assert list(ArrayTest.find({"_id": t._id_regex})) == []
 
 
 def test_entries_returns_key_on_class():
-    t = TestArray("entries", 0)
+    t = ArrayTest("entries", 0)
     with DBTest:
-        assert TestArray.entries == t._page.entries
-        assert TestArray.entries == TestArray._page.entries
-        assert TestArray.entries == "e"
+        assert ArrayTest.entries == t._page.entries
+        assert ArrayTest.entries == ArrayTest._page.entries
+        assert ArrayTest.entries == "e"
 
 
 def test_size_returns_key_on_class():
-    t = TestArray("size", 0)
+    t = ArrayTest("size", 0)
     with DBTest:
-        assert TestArray.size == t._page.size
-        assert TestArray.size == TestArray._page.size
-        assert TestArray.size == "s"
+        assert ArrayTest.size == t._page.size
+        assert ArrayTest.size == ArrayTest._page.size
+        assert ArrayTest.size == "s"
 
 
 def test_unset_page_count_queries_for_the_page_count():
-    t = TestArray("unset_page_count", 0)
+    t = ArrayTest("unset_page_count", 0)
     with DBTest:
         for i in range(6):
             t.append(i)
-        t2 = TestArray("unset_page_count")
+        t2 = ArrayTest("unset_page_count")
         t2.append(7)
         assert t.pages() == t2.page_count
         assert t2.page_count == 3
@@ -367,7 +363,7 @@ def test_unset_page_count_queries_for_the_page_count():
 
 
 def test_all_returns_unmapped_entries():
-    t = TestArray("all_unmapped")
+    t = ArrayTest("all_unmapped")
     with DBTest:
         for i in range(3):
             t.append({str(i): i})
@@ -377,7 +373,7 @@ def test_all_returns_unmapped_entries():
 
 
 def test_iteration():
-    t = TestArray("iteration")
+    t = ArrayTest("iteration")
     with DBTest:
         items = set(range(15))
         for i in items:
@@ -392,8 +388,8 @@ def test_iteration():
 
 
 def test_array_regex_ignores_dots():
-    t = TestArray("with.dot")
-    t2 = TestArray("with_dot")
+    t = ArrayTest("with.dot")
+    t2 = ArrayTest("with_dot")
 
     with DBTest:
         t.append(1)

@@ -31,8 +31,7 @@ class Index(object):
         kwargs["cache_for"] = cache_for
         kwargs["background"] = background
 
-        if _version._lt("2.3") and "cache_for" in kwargs:
-            kwargs["ttl"] = kwargs.pop("cache_for")
+        _version._clean_create_index(kwargs)
 
         self.kwargs = kwargs
 
@@ -49,8 +48,10 @@ class Index(object):
         # Map the attribute name to its key name, or just let it ride
         index = self._resolve_index(cls)
 
-        # Make the ensure index call
-        cls.collection.ensure_index(index, **self.kwargs)
+        # We could prevent multiple calls here, but we already do it in the
+        # calling _ensure_indexes method, so if you're calling this multiple
+        # times, you probably know what you're doing.
+        cls.collection.create_index(index, **self.kwargs)
 
     def _resolve_index(self, cls):
         """Resolves an index to its actual dot notation counterpart, or

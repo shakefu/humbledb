@@ -79,6 +79,9 @@ def test_auto_increment_works_as_advertised():
 
 
 def test_auto_increment_initial_float_counter_value_remains_a_float():
+    if _version._gte("4.0"):
+        pytest.skip("Pymongo 4.x / Python 3.x changed the float consistency behavior")
+
     doc = MyFloatCounterDoc()
     with DBTest:
         MyFloatCounterDoc.save(doc, **_safe)

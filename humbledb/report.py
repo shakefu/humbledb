@@ -280,7 +280,8 @@ class Report(Document):
             return
 
         # Do a fast check if the document exists
-        if cls.find({cls._id: cls.record_id(event, stamp)}).limit(1).count():
+        # if cls.find({cls._id: cls.record_id(event, stamp)}).limit(1).count():
+        if cls.find_one({cls._id: cls.record_id(event, stamp)}):
             return
 
         # Get our query and update clauses

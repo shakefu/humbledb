@@ -59,22 +59,11 @@ jobs:
       - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
-        with:
-          version: "0.7.12"
-          python-version: ${{ matrix.python-version }}
-          enable-cache: true
-          cache-dependency-glob: "pyproject.toml"
-      - name: Install dependencies
-        run: |
-          uv sync --locked --all-extras --dev
-          uv run pre-commit run -a
+      - uses: pre-commit/action@2c7b3805fd2a0fd8c1884dcaebf91fc102a13ecd # v3.0.1
 
   test:
     name: Test
     runs-on: ubuntu-latest
-    needs: lint
     strategy:
       matrix:
         python-version: ["3.10", "3.11", "3.12", "3.13"]
@@ -83,8 +72,7 @@ jobs:
       - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v5
         with:
           python-version: ${{ matrix.python-version }}
-      - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
           version: "0.7.12"
           python-version: ${{ matrix.python-version }}
@@ -93,34 +81,45 @@ jobs:
       - env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
+          # Pytest
           uv sync --locked --all-extras --dev
           uv run pytest --cov
           uv run coveralls
 
-  autoapprove:
-    name: Renovate / Approve
-    needs: [lint, test]
+  docs:
+    name: Docs
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+      - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v5
+        with:
+          python-version-file: ".python-version"
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+        with:
+          version: "0.7.12"
+          enable-cache: true
+          cache-dependency-glob: "pyproject.toml"
+      - env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Build docs
+          uv run script/docs
+
+  checks:
+    name: Checks
+    needs: [lint, test, docs]
     runs-on: ubuntu-latest
     permissions:
       issues: write
       pull-requests: write
-    if: github.actor == 'renovatebot' || github.actor == 'renovate[bot]'
     steps:
-      - name: Auto-approve
+      - name: Renovate / Auto-approve
+        if: github.actor == 'renovatebot' || github.actor == 'renovate[bot]'
         uses: hmarr/auto-approve-action@44888193675f29a83e04faf4002fa8c0b537b1e4 # v3.2.1
         with:
           github-token: ${{ secrets.GITHUB_TOKEN }}
-
-  automerge:
-    name: Renovate / Merge
-    needs: autoapprove
-    runs-on: ubuntu-latest
-    permissions:
-      issues: write
-      pull-requests: write
-    if: github.actor == 'renovatebot' || github.actor == 'renovate[bot]'
-    steps:
-      - name: Auto-merge
+      - name: Renovate / Auto-merge
+        if: github.actor == 'renovatebot' || github.actor == 'renovate[bot]'
         uses: pascalgn/automerge-action@22948e0bc22f0aa673800da838595a3e7347e584 # v0.15.6
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

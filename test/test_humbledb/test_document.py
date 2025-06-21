@@ -4,9 +4,9 @@ import pytest
 import pytool
 
 import humbledb
-from humbledb import Document, Embed, Mongo, _version
+from humbledb import Document, Embed, _version
 
-from ..util import DBTest, database_name
+from ..util import database_name
 
 # The safe= keyword doesn't exist in 3.0
 if _version._lt("3.0.0"):
@@ -15,12 +15,9 @@ else:
     _safe = {}
 
 
-def teardown():
-    DBTest.connection.drop_database(database_name())
-
-
 def cache_for(val):
-    # This is a work around for the version changing the cache argument
+    """Return the expected cache argument based on the version, used for
+    asserting against mock calls."""
     if _version._lt("2.3"):
         return {"ttl": val}
     return {"cache_for": val}
@@ -64,7 +61,7 @@ def test_bad_name():
             items = "i"
 
 
-def test_missing_database():
+def test_missing_database(DBTest):
     with pytest.raises(RuntimeError):
 
         class Test(Document):
@@ -74,7 +71,7 @@ def test_missing_database():
             Test.collection
 
 
-def test_missing_collection():
+def test_missing_collection(DBTest):
     with pytest.raises(RuntimeError):
 
         class Test(Document):
@@ -84,7 +81,7 @@ def test_missing_collection():
             Test.collection
 
 
-def test_bad_attribute():
+def test_bad_attribute(DBTest):
     with pytest.raises(AttributeError):
         with DBTest:
             DocTest.foo
@@ -116,7 +113,7 @@ def test_instance_dictproxy_attr():
     assert DocTest().user_name == {}
 
 
-def test_ensure_indexes_called():
+def test_ensure_indexes_called(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -135,7 +132,7 @@ def test_ensure_indexes_called():
             _ensure.assert_called_once()
 
 
-def test_ensure_indexes_calls_ensure_index_pymongo_4():
+def test_ensure_indexes_calls_ensure_index_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 
@@ -154,7 +151,7 @@ def test_ensure_indexes_calls_ensure_index_pymongo_4():
             coll.create_index.assert_called_with(Test.user_name, background=True)
 
 
-def test_ensure_indexes_calls_ensure_index():
+def test_ensure_indexes_calls_ensure_index(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -175,7 +172,7 @@ def test_ensure_indexes_calls_ensure_index():
             )
 
 
-def test_ensure_indexes_calls_create_index_pymongo_4():
+def test_ensure_indexes_calls_create_index_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 
@@ -194,7 +191,7 @@ def test_ensure_indexes_calls_create_index_pymongo_4():
             coll.create_index.assert_called_with(Test.user_name, background=True)
 
 
-def test_ensure_indexes_reload_hook():
+def test_ensure_indexes_reload_hook(DBTest):
     class Test(Document):
         config_database = database_name()
         config_collection = "test"
@@ -210,7 +207,7 @@ def test_ensure_indexes_reload_hook():
     assert Test._ensured is False
 
 
-def test_wrap_methods():
+def test_wrap_methods(DBTest):
     with DBTest:
         with mock.patch.object(DocTest, "_wrap") as _wrap:
             _wrap.return_value = "_wrapper"
@@ -218,7 +215,7 @@ def test_wrap_methods():
             _wrap.assert_called_once()
 
 
-def test_wrap_method_behaves_itself():
+def test_wrap_method_behaves_itself(DBTest):
     with DBTest:
         with mock.patch.object(DocTest, "collection") as coll:
             coll.find.__name__ = "find"
@@ -227,7 +224,7 @@ def test_wrap_method_behaves_itself():
             coll.find.assert_called_with()
 
 
-def test_update_wrapping():
+def test_update_wrapping(DBTest):
     with DBTest:
         assert DocTest._wrap_update == DocTest.update
 
@@ -311,7 +308,7 @@ def test_property_attribute():
     assert tp.attr is tp
 
 
-def test_inheritance():
+def test_inheritance(DBTest):
     class DocTest2(DocTest):
         pass
 
@@ -345,7 +342,7 @@ def test_classproperty_attribute():
     assert _TestClassProp().attr is _TestClassProp
 
 
-def test_self_insertion():
+def test_self_insertion(DBTest):
     t = DocTest()
     with DBTest:
         type(t).insert(t)
@@ -353,20 +350,20 @@ def test_self_insertion():
     assert t._id
 
 
-def test_cls_self_insertion():
+def test_cls_self_insertion(DBTest):
     with DBTest:
         DocTest.insert({"_id": "tsci", "t": True})
         assert DocTest.find_one({"_id": "tsci"})
 
 
-def test_collection_attributes_not_accessible_from_instance():
+def test_collection_attributes_not_accessible_from_instance(DBTest):
     t = DocTest()
     with pytest.raises(AttributeError):
         with DBTest:
             t.find
 
 
-def test_collection_accessible_from_instance():
+def test_collection_accessible_from_instance(DBTest):
     t = DocTest()
     with DBTest:
         t.collection
@@ -544,7 +541,7 @@ def test_embed_for_json():
     assert t.for_json() == {"embed": {"embed": {"attr": "hello"}}}
 
 
-def test_embed_retrieval_types():
+def test_embed_retrieval_types(DBTest):
     class Retriever(EmbedTestDoc):
         config_database = database_name()
         config_collection = "test"
@@ -579,7 +576,7 @@ def test_always_id_subclass():
     assert TestSub._id == "_id"
 
 
-def test_find_returns_same_class():
+def test_find_returns_same_class(DBTest):
     doc = DocTest()
     doc.user_name = "testing find"
 
@@ -596,7 +593,7 @@ def test_find_returns_same_class():
     assert type(doc) is DocTest
 
 
-def test_find_one_returns_same_class():
+def test_find_one_returns_same_class(DBTest):
     doc = DocTest()
     doc.user_name = "testing find_one"
 
@@ -613,7 +610,7 @@ def test_find_one_returns_same_class():
     assert type(doc) is DocTest
 
 
-def test_find_and_modify_returns_same_class():
+def test_find_and_modify_returns_same_class(DBTest):
     doc = DocTest()
     doc.user_name = "testing find_and_modify"
 
@@ -634,7 +631,7 @@ def test_find_and_modify_returns_same_class():
     assert type(doc) is DocTest
 
 
-def test_find_and_modify_doesnt_error_when_none():
+def test_find_and_modify_doesnt_error_when_none(DBTest):
     with DBTest:
         doc = DocTest.find_and_modify(
             {DocTest._id: "doesnt_exist"}, {"$set": {"foo": 1}}
@@ -643,29 +640,29 @@ def test_find_and_modify_doesnt_error_when_none():
     assert doc is None
 
 
-def test_list_subdocuments_should_be_regular_dicts():
-    pytest.skip("This test is slow, need to fix it later")
-
+def test_list_subdocuments_should_be_regular_dicts(DBTest):
     class ListTest(DocTest):
         vals = "v"
 
     # Create a new instance
     items = ListTest()
     vals = [{"a": {"test": True}, "b": 2}]
+
     # Insert the instance
-    with Mongo:
+    with DBTest:
         l_id = ListTest.insert(items)
         # Set the list
         ListTest.update({ListTest._id: l_id}, {"$set": {ListTest.vals: vals}})
         # Re-retrieve the instance to allow pymongo to coerce types
         items = list(ListTest.find({ListTest._id: l_id}))[0]
         l2 = ListTest.find_one({ListTest._id: l_id})
+
     # Check the type
     assert not isinstance(items.vals[0], Document)
     assert not isinstance(l2.vals[0], Document)
 
 
-def test_unpatching_document_update_works_nicely():
+def test_unpatching_document_update_works_nicely(DBTest):
     with DBTest:
         original_update = DocTest.update
         with mock.patch.object(DocTest, "update") as update:
@@ -677,7 +674,7 @@ def test_unpatching_document_update_works_nicely():
         assert DocTest.update == original_update
 
 
-def test_unmapped_subdocument_saves_and_retrieves_ok():
+def test_unmapped_subdocument_saves_and_retrieves_ok(DBTest):
     class Test(DocTest):
         val = "v"
 
@@ -710,7 +707,7 @@ def test_config_indexes_must_be_a_list():
             config_indexes = "foo"
 
 
-def test_exercise_normal_index():
+def test_exercise_normal_index(DBTest):
     class Test(Document):
         config_database = database_name()
         config_collection = "potato"
@@ -814,7 +811,7 @@ def test_default_is_inheritable():
     assert d.val == 3
 
 
-def test_saved_default_is_set_on_saving():
+def test_saved_default_is_set_on_saving(DBTest):
     class Default(DocTest):
         saved = "s", lambda: 1
 
@@ -827,7 +824,7 @@ def test_saved_default_is_set_on_saving():
     assert dict(d) == {Default.saved: 1}
 
 
-def test_saved_default_is_set_on_inserting():
+def test_saved_default_is_set_on_inserting(DBTest):
     class Default(DocTest):
         saved = "s", lambda: 1
 
@@ -840,7 +837,7 @@ def test_saved_default_is_set_on_inserting():
     assert dict(d) == {Default.saved: 1}
 
 
-def test_saved_default_is_set_on_multiple_inserts():
+def test_saved_default_is_set_on_multiple_inserts(DBTest):
     class Default(DocTest):
         saved = "s", lambda: 1
 
@@ -926,7 +923,7 @@ def test_only_two_tuples_with_leading_string_are_interpreted_as_defaults():
     assert d.attr4 == v4
 
 
-def test_update_with_safe_keyword_doesnt_break_pymongo_3():
+def test_update_with_safe_keyword_doesnt_break_pymongo_3(DBTest):
     with DBTest:
         DocTest.update(
             {"_id": "update_safe_pymongo_3"},
@@ -936,11 +933,11 @@ def test_update_with_safe_keyword_doesnt_break_pymongo_3():
         )
 
 
-def test_save_with_safe_keyword_doesnt_break_pymongo_3():
+def test_save_with_safe_keyword_doesnt_break_pymongo_3(DBTest):
     with DBTest:
         DocTest.save({"_id": "save_safe_pymongo_3"}, safe=True)
 
 
-def test_insert_with_safe_keyword_doesnt_break_pymongo_3():
+def test_insert_with_safe_keyword_doesnt_break_pymongo_3(DBTest):
     with DBTest:
         DocTest.insert({"_id": "insert_safe_pymongo_3"}, safe=True)

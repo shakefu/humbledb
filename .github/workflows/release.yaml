@@ -17,51 +17,68 @@ jobs:
     name: Release
     needs: ci
     runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.version.outputs.new-release-version }}
+      published: ${{ steps.version.outputs.new-release-published }}
+    steps:
+      - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
+        with:
+          fetch-depth: 0
+      - id: version
+        uses: open-turo/actions-release/semantic-release@4d8a6b6aa2d051e7dba0429d8d08beef827b5ccd # v4
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          dry-run: true
+          ci: false
+
+  publish:
+    name: Publish
+    needs: release
+    runs-on: ubuntu-latest
+    if: needs.release.outputs.published == 'true'
     permissions:
       contents: write
       issues: write
       pull-requests: write
       id-token: write
     steps:
+      - id: authenticate
+        uses: actions/create-github-app-token@df432ceedc7162793a195dd1713ff69aefc7379e # v2
+        with:
+          app-id: ${{ secrets.BOT_CLIENT_ID }}
+          private-key: ${{ secrets.BOT_PRIVATE_KEY }}
       - uses: actions/checkout@b4ffde65f46336ab88eb53be808477a3936bae11 # v4
         with:
+          token: ${{ steps.authenticate.outputs.token }}
           fetch-depth: 0
       - uses: actions/setup-python@65d7f2d534ac1bc67fcd62888c5f4f3d2cb2b236 # v5
         with:
           python-version-file: ".python-version"
-      - name: Install uv
-        uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
+      - uses: astral-sh/setup-uv@f0ec1fc3b38f5e7cd731bb6ce540c5af426746bb # v6.1.0
         with:
           version: "0.7.12"
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
-      - name: Install dependencies
-        run: uv sync --locked --all-extras --dev
-      - name: Find version
-        id: version
+      - run: |
+          # Install dependencies
+          uv sync --locked --all-extras --dev
+      - id: version
         uses: open-turo/actions-release/semantic-release@4d8a6b6aa2d051e7dba0429d8d08beef827b5ccd # v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.authenticate.outputs.token }}
           dry-run: true
           ci: false
-      - name: Release check
-        if: steps.version.outputs.new-release-published != 'true'
-        run: |
-          echo "::notice:: No new release version!"
-          exit 1
-      - name: Update version
-        run: uv version ${{ steps.version.outputs.new-release-version }}
-      - name: Commit & push version
-        uses: actions-js/push@master
+      - run: |
+          # Update version
+          uv version ${{ steps.version.outputs.new-release-version }}
+      - uses: actions-js/push@master
         with:
           message: "chore: ${{ steps.version.outputs.new-release-version }} [skip actions]"
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-      - name: Build package
-        run: |
+          github_token: ${{ steps.authenticate.outputs.token }}
+      - run: |
+          # Build package
           uv build
-      - name: Publish to PyPI
-        uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # release/v1
-      - name: Release
-        uses: open-turo/actions-release/semantic-release@4d8a6b6aa2d051e7dba0429d8d08beef827b5ccd # v4
+      - uses: pypa/gh-action-pypi-publish@76f52bc884231f62b9a034ebfe128415bbaabdfc # release/v1
+      - uses: open-turo/actions-release/semantic-release@4d8a6b6aa2d051e7dba0429d8d08beef827b5ccd # v4
         with:
-          github-token: ${{ secrets.GITHUB_TOKEN }}
+          github-token: ${{ steps.authenticate.outputs.token }}

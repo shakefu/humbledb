@@ -2,6 +2,7 @@
 
 import logging
 from functools import wraps
+from typing import Optional
 
 import pyconfig
 import pymongo
@@ -110,7 +111,7 @@ class CollectionAttribute(object):
         # Only allow access to the collection in a Mongo context
         if Mongo.context:
             db = Mongo.context.database
-            if db and db.name != database:
+            if db is not None and db.name != database:
                 raise DatabaseMismatch(
                     "This document is configured for "
                     "database %r, while the connection is using %r"
@@ -331,7 +332,17 @@ class DocumentMeta(type):
 
         """
         _version._clean(kwargs)
-        return cls.collection.update(*args, **kwargs)
+
+        # If the multi keyworld is set, use update_many
+        if kwargs.pop("multi", False):
+            result = cls.collection.update_many(*args, **kwargs)
+        else:
+            result = cls.collection.update_one(*args, **kwargs)
+
+        if result.matched_count:
+            return result.raw_result
+
+        return None
 
     def _get_update(cls):
         return cls._update or cls._wrap_update
@@ -370,13 +381,27 @@ class DocumentMeta(type):
         if args and kwargs.get("manipulate", True):
             cls._ensure_saved_defaults(args[0])
 
-        return cls.collection.save(*args, **kwargs)
+        doc = args[0]
+        if not isinstance(doc, dict):
+            raise ValueError("Invalid document type: {}".format(type(doc)))
+
+        if "_id" in doc:
+            return cls.collection.replace_one(
+                {"_id": doc["_id"]},
+                doc,
+                upsert=True,
+            )
+        else:
+            result = cls.collection.insert_one(doc)
+            if result:
+                return result.inserted_id
 
     def insert(cls, *args, **kwargs):
         """
         Override collection insert method to allow saved defaults.
 
-        Takes same arguments as :meth:`pymongo.collection.Collection.insert`.
+        Takes same arguments as :meth:`pymongo.collection.Collection.insert`
+        before :mod:`pymongo` 4.x.
 
         If `manipulate` is ``False`` then the saved defaults will not be
         inserted.
@@ -396,7 +421,53 @@ class DocumentMeta(type):
                 for doc in doc_or_docs:
                     cls._ensure_saved_defaults(doc)
 
-        return cls.collection.insert(*args, **kwargs)
+        # If we have one doc, use insert_one, otherwise use insert_many
+        if isinstance(doc_or_docs, dict):
+            result = cls.collection.insert_one(*args, **kwargs)
+            if result:
+                return result.inserted_id
+        elif isinstance(doc_or_docs, list):
+            result = cls.collection.insert_many(*args, **kwargs)
+            if result:
+                return result.inserted_ids
+        else:
+            raise ValueError("Invalid document type: {}".format(type(doc_or_docs)))
+
+    def find_and_modify(cls, query: dict, update: Optional[dict] = None, **kwargs):
+        """
+        Implements a backwards-compatible find_and_modify taking the same arguments as :meth:`pymongo.collection.Collection.find_and_modify` before :mod:`pymongo` 4.x.
+        """
+        if kwargs.pop("new", False):
+            kwargs["return_document"] = pymongo.ReturnDocument.AFTER
+
+        if not update:
+            return cls.collection.find_one_and_delete(query, **kwargs)
+
+        # See if the document is using any of the modifier operators
+        replace = True
+        for k in update.keys():
+            if k.startswith("$"):
+                replace = False
+                break
+
+        if replace:
+            doc = cls.collection.find_one_and_replace(query, update, **kwargs)
+        else:
+            doc = cls.collection.find_one_and_update(query, update, **kwargs)
+
+        if doc:
+            return cls(doc)
+        return None
+
+    def remove(cls, query: dict, **kwargs):
+        """
+        Implements a backwards-compatible remove taking the same arguments as :meth:`pymongo.collection.Collection.remove` before :mod:`pymongo` 4.x.
+        """
+        multi = kwargs.pop("multi", True)
+        if multi:
+            return cls.collection.delete_many(query, **kwargs)
+        else:
+            return cls.collection.delete_one(query, **kwargs)
 
     def _ensure_saved_defaults(cls, doc):
         """Update `doc` to ensure saved defaults exist before saving."""
@@ -591,6 +662,9 @@ class Document(dict, metaclass=DocumentMeta):
                 if isinstance(index, Index):
                     index.ensure(cls)
                 else:  # pragma: no cover
+                    if _version._gte("4.0"):
+                        raise RuntimeError("Pymongo 4.x does not support ensure_index")
+
                     # This code is no longer reachable with the new Indexes,
                     # but I don't want to remove it yet
                     caching_key = "cache_for" if _version._gte("2.3") else "ttl"

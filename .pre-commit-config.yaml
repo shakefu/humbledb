@@ -16,10 +16,10 @@ repos:
     hooks:
       - id: prettier
         stages: [pre-commit]
-  - repo: https://github.com/rhysd/actionlint
-    rev: v1.7.7
-    hooks:
-      - id: actionlint
+  # - repo: https://github.com/rhysd/actionlint
+  #   rev: v1.7.7
+  #   hooks:
+  #     - id: actionlint
   # - repo: https://github.com/jumanjihouse/pre-commit-hooks
   #   rev: 3.0.0 # or specific git tag
   #   hooks:

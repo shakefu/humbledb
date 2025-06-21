@@ -12,6 +12,15 @@ wheels = [
 ]
 
 [[package]]
+name = "attrs"
+version = "25.3.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/5a/b0/1367933a8532ee6ff8d63537de4f1177af4bff9f3e829baf7331f595bb24/attrs-25.3.0.tar.gz", hash = "sha256:75d7cefc7fb576747b2c81b4442d4d4a1ce0900973527c011d1030fd3bf4af1b", size = 812032, upload-time = "2025-03-13T11:10:22.779Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/77/06/bb80f5f86020c4551da315d78b3ab75e8228f89f0162f2c3a819e407941a/attrs-25.3.0-py3-none-any.whl", hash = "sha256:427318ce031701fea540783410126f03899a97ffc6f61596ad581ac2e40e3bc3", size = 63815, upload-time = "2025-03-13T11:10:21.14Z" },
+]
+
+[[package]]
 name = "babel"
 version = "2.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -156,6 +165,7 @@ dependencies = [
 dev = [
     { name = "mock" },
     { name = "pytest" },
+    { name = "pytest-docker" },
 ]
 docs = [
     { name = "sphinx" },
@@ -174,6 +184,7 @@ requires-dist = [
 dev = [
     { name = "mock" },
     { name = "pytest", specifier = ">=8.4.0" },
+    { name = "pytest-docker", specifier = ">=3.2.2" },
 ]
 docs = [
     { name = "sphinx", specifier = ">=7.2.6,<8.0.0" },
@@ -432,6 +443,19 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/08/ba/45911d754e8eba3d5a841a5ce61a65a685ff1798421ac054f85aa8747dfb/pytest-8.4.1.tar.gz", hash = "sha256:7c67fd69174877359ed9371ec3af8a3d2b04741818c51e5e99cc1742251fa93c", size = 1517714, upload-time = "2025-06-18T05:48:06.109Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/29/16/c8a903f4c4dffe7a12843191437d7cd8e32751d5de349d45d3fe69544e87/pytest-8.4.1-py3-none-any.whl", hash = "sha256:539c70ba6fcead8e78eebbf1115e8b589e7565830d7d006a8723f19ac8a0afb7", size = 365474, upload-time = "2025-06-18T05:48:03.955Z" },
+]
+
+[[package]]
+name = "pytest-docker"
+version = "3.2.2"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "pytest" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/53/59/156a6aa71d79b411e8517996e24e63b58b3972b85dbc23acf7339a9caee8/pytest_docker-3.2.2.tar.gz", hash = "sha256:58ce79f3173209634bfff8ccaed2ce5593463d5272325c912e1b52a53154f452", size = 13469, upload-time = "2025-05-26T12:24:07.46Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/80/6d/f4c400ce2af6170f23a5d8183e431bb2ddf83131dbf0d23712da708de570/pytest_docker-3.2.2-py3-none-any.whl", hash = "sha256:2926033d48a10de611070fce17f6e67b9e81af2d8ccc59debbbf39872b8ebef9", size = 8575, upload-time = "2025-05-26T12:24:06.513Z" },
 ]
 
 [[package]]

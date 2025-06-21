@@ -35,7 +35,7 @@ class Cursor(pymongo.cursor.Cursor):
         pretty fragile implementation since it relies on copying private
         variables...
         """
-        clone = type(self)(self.__collection)
+        clone = type(self)(self.collection)
         values_to_clone = (
             "spec",
             "fields",
@@ -84,6 +84,12 @@ class Cursor(pymongo.cursor.Cursor):
 
         """
         return self.__clone(True)
+
+    def count(self) -> int:
+        """
+        Implements a backwards-compatible count taking the same arguments as :meth:`pymongo.cursor.Cursor.count` before :mod:`pymongo` 4.x.
+        """
+        return self.collection.count_documents(self._query_spec())
 
     def __copy__(self):
         return self.__clone(deepcopy=False)

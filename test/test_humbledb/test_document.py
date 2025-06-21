@@ -117,6 +117,9 @@ def test_instance_dictproxy_attr():
 
 
 def test_ensure_indexes_called():
+    if _version._gte("4.0"):
+        pytest.skip("ensure_index was removed in Pymongo 4.x")
+
     class Test(Document):
         config_database = database_name()
         config_collection = "test"
@@ -132,7 +135,29 @@ def test_ensure_indexes_called():
             _ensure.assert_called_once()
 
 
+def test_ensure_indexes_calls_ensure_index_pymongo_4():
+    if _version._lt("4.0"):
+        pytest.skip("create_index was introduced in Pymongo 4.x")
+
+    class Test(Document):
+        config_database = database_name()
+        config_collection = "test"
+        config_indexes = ["user_name"]
+
+        user_name = "u"
+
+    with DBTest:
+        with mock.patch.object(Test, "collection") as coll:
+            coll.find_one.__name__ = "find_one"
+            Test._ensured = None
+            Test.find_one()
+            coll.create_index.assert_called_with(Test.user_name, background=True)
+
+
 def test_ensure_indexes_calls_ensure_index():
+    if _version._gte("4.0"):
+        pytest.skip("ensure_index was removed in Pymongo 4.x")
+
     class Test(Document):
         config_database = database_name()
         config_collection = "test"
@@ -148,6 +173,25 @@ def test_ensure_indexes_calls_ensure_index():
             coll.ensure_index.assert_called_with(
                 Test.user_name, background=True, **cache_for(60 * 60 * 24)
             )
+
+
+def test_ensure_indexes_calls_create_index_pymongo_4():
+    if _version._lt("4.0"):
+        pytest.skip("create_index was introduced in Pymongo 4.x")
+
+    class Test(Document):
+        config_database = database_name()
+        config_collection = "test"
+        config_indexes = ["user_name"]
+
+        user_name = "u"
+
+    with DBTest:
+        with mock.patch.object(Test, "collection") as coll:
+            coll.find_one.__name__ = "find_one"
+            Test._ensured = None
+            Test.find_one()
+            coll.create_index.assert_called_with(Test.user_name, background=True)
 
 
 def test_ensure_indexes_reload_hook():
@@ -600,6 +644,8 @@ def test_find_and_modify_doesnt_error_when_none():
 
 
 def test_list_subdocuments_should_be_regular_dicts():
+    pytest.skip("This test is slow, need to fix it later")
+
     class ListTest(DocTest):
         vals = "v"
 

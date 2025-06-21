@@ -246,21 +246,7 @@ class Mongo(object, metaclass=MongoMeta):
 
         kwargs.update(cls.config_mongo_client)
 
-        if _version._gte("2.1.0") and _version._lt("2.2.0"):
-            # This causes an error for the 2.1.x versions of Pymongo, so we
-            # remove it
-            kwargs.pop("auto_start_request")
-            kwargs.pop("use_greenlets")
-
-        if _version._gte("3.0.0"):
-            # Handle removed keywords
-            kwargs.pop("use_greenlets")
-            kwargs.pop("auto_start_request")
-            # Handle changed keywords
-            kwargs["maxPoolSize"] = kwargs.pop("max_pool_size")
-            # Handle other 3.0 stuff
-            if kwargs.get("ssl") and ssl:
-                kwargs.setdefault("ssl_cert_reqs", ssl.CERT_NONE)
+        _version._clean_connection_kwargs(kwargs)
 
         if cls.config_replica:
             kwargs["replicaSet"] = cls.config_replica

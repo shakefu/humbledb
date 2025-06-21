@@ -63,7 +63,7 @@ class ArrayMeta(type):
         return cls._page.update
 
     @property
-    def remove(cls):  # This needs a try/except for nosetests
+    def remove(cls):  # This needs a try/except for tests
         try:
             return cls._page.remove
         except NoConnection:

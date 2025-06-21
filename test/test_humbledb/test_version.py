@@ -6,81 +6,76 @@ This module tests version checking helpers and kwargs cleaning functionality.
 
 from unittest.mock import patch
 
+from packaging.version import Version
+
 from humbledb._version import _clean, _gte, _lt
+
+# All these patched versions need to be unique so we don't hit the lru_cache on
+# _lt and _gte This is a bit of a hack, but it's the best we can do for now.
 
 
 # Test _lt function
-@patch("humbledb._version.get_version")
-def test_lt_true_when_pymongo_version_is_lower(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("7.8.0"))
+def test_lt_true_when_pymongo_version_is_lower():
     """Test _lt returns True when pymongo version is lower than target."""
-    mock_get_version.return_value = "2.8.0"
-    assert _lt("3.0.0") is True
+    assert _lt("8.0.0") is True
 
 
-@patch("humbledb._version.get_version")
-def test_lt_false_when_pymongo_version_is_higher(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("9.2.0"))
+def test_lt_false_when_pymongo_version_is_higher():
     """Test _lt returns False when pymongo version is higher than target."""
-    mock_get_version.return_value = "3.2.0"
-    assert _lt("3.0.0") is False
+    assert _lt("9.0.0") is False
 
 
-@patch("humbledb._version.get_version")
-def test_lt_false_when_pymongo_version_is_equal(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("10.0.0"))
+def test_lt_false_when_pymongo_version_is_equal():
     """Test _lt returns False when pymongo version equals target."""
-    mock_get_version.return_value = "3.0.0"
-    assert _lt("3.0.0") is False
+    assert _lt("10.0.0") is False
 
 
-@patch("humbledb._version.get_version")
-def test_lt_with_complex_versions(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("11.0.1"))
+def test_lt_with_complex_versions():
     """Test _lt with complex version strings."""
-    mock_get_version.return_value = "3.0.1"
-    assert _lt("3.0.2") is True
-    assert _lt("3.0.0") is False
+    assert _lt("11.0.2") is True
+    assert _lt("11.0.0") is False
 
 
-@patch("humbledb._version.get_version")
-def test_lt_with_prerelease_versions(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("12.0.0rc1"))
+def test_lt_with_prerelease_versions():
     """Test _lt with pre-release versions."""
-    mock_get_version.return_value = "3.0.0rc1"
-    assert _lt("3.0.0") is True
+    assert _lt("12.0.0") is True
 
 
 # Test _gte function
-@patch("humbledb._version.get_version")
-def test_gte_true_when_pymongo_version_is_higher(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("13.2.0"))
+def test_gte_true_when_pymongo_version_is_higher():
     """Test _gte returns True when pymongo version is higher than target."""
-    mock_get_version.return_value = "3.2.0"
-    assert _gte("3.0.0") is True
+    assert _gte("13.0.0") is True
 
 
-@patch("humbledb._version.get_version")
-def test_gte_true_when_pymongo_version_is_equal(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("14.0.0"))
+def test_gte_true_when_pymongo_version_is_equal():
     """Test _gte returns True when pymongo version equals target."""
-    mock_get_version.return_value = "3.0.0"
-    assert _gte("3.0.0") is True
+    assert _gte("14.0.0") is True
 
 
-@patch("humbledb._version.get_version")
-def test_gte_false_when_pymongo_version_is_lower(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("2.8.0"))
+def test_gte_false_when_pymongo_version_is_lower():
     """Test _gte returns False when pymongo version is lower than target."""
-    mock_get_version.return_value = "2.8.0"
-    assert _gte("3.0.0") is False
+    assert _gte("3.0.9") is False
 
 
-@patch("humbledb._version.get_version")
-def test_gte_with_complex_versions(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("3.0.1"))
+def test_gte_with_complex_versions():
     """Test _gte with complex version strings."""
-    mock_get_version.return_value = "3.0.1"
     assert _gte("3.0.0") is True
     assert _gte("3.0.1") is True
     assert _gte("3.0.2") is False
 
 
-@patch("humbledb._version.get_version")
-def test_gte_with_prerelease_versions(mock_get_version):
+@patch("humbledb._version.PYMONGO", Version("3.0.0rc1"))
+def test_gte_with_prerelease_versions():
     """Test _gte with pre-release versions."""
-    mock_get_version.return_value = "3.0.0rc1"
     assert _gte("2.9.0") is True
 
 

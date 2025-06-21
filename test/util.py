@@ -21,7 +21,7 @@ __all__ = [
 
 def database_name():
     """Return the test database name."""
-    return pyconfig.get("humbledb.test.db.name", "nose_humbledb")
+    return pyconfig.get("humbledb.test.db.name", "humbledb_test")
 
 
 def enable_sharding(collection, key):
@@ -55,12 +55,6 @@ def enable_sharding(collection, key):
 class DBTest(Mongo):
     config_host = pyconfig.setting("humbledb.test.db.host", "localhost")
     config_port = pyconfig.setting("humbledb.test.db.port", 27017)
-
-
-# This instantiates the connection and causes nose to crap out if there's no
-# database available, which is what we want
-with DBTest:
-    logging.getLogger(__name__).info("Connection successful.")
 
 
 def assert_is_subclass(obj, cls):

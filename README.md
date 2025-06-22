@@ -11,7 +11,8 @@ clarity.
 [![Coverage Status](https://coveralls.io/repos/shakefu/humbledb/badge.png?branch=master)](https://coveralls.io/r/shakefu/humbledb?branch=master)
 [![GitHub Sponsors](https://img.shields.io/github/sponsors/shakefu?style=flat&logo=github&logoColor=white&labelColor=ea4aaa&color=ea4aaa)](https://github.com/sponsors/shakefu)
 
-> [!WARNING] Version 7.0.0 Breaking Changes
+> [!WARNING]
+> Version 7.0.0 Breaking Changes.
 > This release updates to Pymongo 4.x, which introduces [breaking
 > changes](https://pymongo.readthedocs.io/en/stable/migrate-to-pymongo4.html).
 > While we've maintained all older 3.x and 2.x Pymongo methods with identical

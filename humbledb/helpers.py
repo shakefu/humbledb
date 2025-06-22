@@ -9,8 +9,8 @@ This module contains common helpers which make your life easier.
 import pymongo
 from pytool.lang import UNSET
 
-from humbledb import Mongo
 from humbledb.errors import DatabaseMismatch, NoConnection
+from humbledb.mongo import Mongo
 
 
 def auto_increment(database, collection, _id, field="value", increment=1):

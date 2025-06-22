@@ -12,7 +12,9 @@ import pytool
 from pytool.lang import classproperty
 
 import humbledb
-from humbledb import Document, Embed, Index, _version
+from humbledb import _version
+from humbledb.document import Document, Embed
+from humbledb.index import Index
 
 # Interval and Period constants
 YEAR = 5

@@ -1,7 +1,10 @@
 import itertools
 
+from pytool.lang import UNSET
+
 import humbledb
-from humbledb import UNSET, Document, _version
+from humbledb import _version
+from humbledb.document import Document
 from humbledb.errors import NoConnection
 
 

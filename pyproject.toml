@@ -1,6 +1,6 @@
 [project]
 name = "humbledb"
-version = "6.0.0"
+version = "7.0.0"
 description = "HumbleDB - MongoDB Object-Document Mapper"
 readme = "README.md"
 license = "MIT"

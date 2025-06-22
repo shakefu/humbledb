@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+
+# This script will install the project and all its dependencies into a virtual
+# environment and then build the documentation.
+#
+# It maintains parity with the Read the Docs build process.
+
+# Use a separate venv from the main development venv
+# shellcheck disable=SC2034
+UV_PROJECT_ENVIRONMENT="${UV_PROJECT_ENVIRONMENT:-./docs/.venv/}"
+
+# Create a virtual environment for the documentation
+uv venv "${UV_PROJECT_ENVIRONMENT}"
+
+# Install the project and all its dependencies into the virtual environment
+uv sync --frozen --all-extras --all-groups --no-editable --link-mode=copy
+uv pip install --link-mode=copy .
+
+# Build the documentation, failing on warnings
+uv run python -m sphinx -T -W --keep-going -b html -d ./docs/_build/doctrees -D language=en ./docs ./docs/_output

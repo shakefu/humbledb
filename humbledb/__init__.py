@@ -19,7 +19,12 @@ limitations under the License.
 
 """
 
-__version__ = "6.0.0"
+import importlib.metadata
+
+try:
+    __version__ = importlib.metadata.version("humbledb")
+except importlib.metadata.PackageNotFoundError:
+    __version__ = "0.0.0-dev"
 
 
 # We only want to allow * imports for the most common classes. If you want
@@ -31,28 +36,25 @@ __all__ = [
     "Embed",
 ]
 
-# Shortcut to pytool.lang.UNSET
-from pytool.lang import UNSET
-
 # Shortcuts to pymongo index directions
 import pymongo
+
+# Shortcut to pytool.lang.UNSET
+from pytool.lang import UNSET
 
 DESC = pymongo.DESCENDING
 ASC = pymongo.ASCENDING
 del pymongo  # Clean up the namespace
 
+# Exceptions module
+# Import array and report framework modules. These need to be imported last or
+# it causes with circular imports
+from . import array, errors, report
+from .document import Document, Embed
+
 # Import shortcuts to HumbleDB document basics
 from .index import Index
 from .mongo import Mongo
-from .document import Document, Embed
-
-# Import array and report framework modules. These need to be imported last or
-# it causes with circular imports
-from . import array
-from . import report
-
-# Exceptions module
-from . import errors
 
 # To make Pyflakes happy
 array = array

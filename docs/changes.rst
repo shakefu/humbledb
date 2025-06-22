@@ -124,7 +124,7 @@ This section contains all the changes that I can remember, by version.
 -----
 
 - This release may break backwards compatibility.
-- Total rewrite of the :module:`humbledb.report` module to make it much more
+- Total rewrite of the :mod:`humbledb.report` module to make it much more
   useful. Sorry, but I'm fairly sure nobody was
   using it before anyway.
 

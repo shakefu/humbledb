@@ -1,4 +1,5 @@
-import mock
+from unittest import mock
+
 import pyconfig
 import pytest
 import pytool

@@ -17,7 +17,6 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coveralls>=4.0.1",
-    "mock",
     "pytest>=8.4.0",
     "pytest-cov>=6.2.1",
     "pytest-docker>=3.2.2",

@@ -92,8 +92,11 @@ pygments_style = "sphinx"
 
 # -- Intersphinx configuration
 intersphinx_mapping = {
-    "python": ("http://docs.python.org/2.7", None),
-    "pymongo": ("http://api.mongodb.org/python/current/", None),
+    "python": ("https://docs.python.org/3", None),
+    "pymongo": (
+        "https://www.mongodb.com/docs/languages/python/pymongo-driver/current/",
+        None,
+    ),
 }
 
 # -- Options for HTML output ---------------------------------------------------

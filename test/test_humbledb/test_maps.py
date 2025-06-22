@@ -4,11 +4,7 @@ import pytool
 from humbledb import Document, Embed
 from humbledb.maps import DictMap, ListMap
 
-from ..util import DBTest, database_name
-
-
-def teardown():
-    DBTest.connection.drop_database(database_name())
+from ..util import database_name
 
 
 class MapTest(Document):
@@ -150,7 +146,7 @@ def test_deleting_the_last_key_removes_an_embedded_doc():
     assert t == {}
 
 
-def test_lists_are_mapped():
+def test_lists_are_mapped(DBTest):
     doc = ListTest()
     doc.vals = ["hello", "world"]
     with DBTest:
@@ -193,7 +189,7 @@ def test_embedded_list_creation_with_attributes():
     assert doc.for_json() == {"vals": [{"one": 1, "two": 2}]}
 
 
-def test_embedded_list_with_crazy_complex_heirarchy():
+def test_embedded_list_with_crazy_complex_heirarchy(DBTest):
     class Test(DocTest):
         s1 = "s1"
         l1 = Embed("l1")
@@ -238,7 +234,7 @@ def test_embedded_list_iteration():
         assert isinstance(item.i, int)
 
 
-def test_modified_items_save_ok():
+def test_modified_items_save_ok(DBTest):
     class Test(DocTest):
         vals = Embed("v")
         vals.i = "i"

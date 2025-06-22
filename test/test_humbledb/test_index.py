@@ -5,11 +5,7 @@ import pytest
 import humbledb
 from humbledb import Document, Embed, Index, _version
 
-from ..util import DBTest, database_name
-
-
-def teardown():
-    DBTest.connection.drop_database(database_name())
+from ..util import database_name
 
 
 def cache_for(val):
@@ -26,7 +22,7 @@ class DocTest(Document):
     user_name = "u"
 
 
-def test_index_basic():
+def test_index_basic(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -47,7 +43,7 @@ def test_index_basic():
             )
 
 
-def test_index_basic_sparse():
+def test_index_basic_sparse(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -68,7 +64,7 @@ def test_index_basic_sparse():
             )
 
 
-def test_index_basic_directional():
+def test_index_basic_directional(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -91,7 +87,7 @@ def test_index_basic_directional():
             )
 
 
-def test_index_override_defaults():
+def test_index_override_defaults(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -142,7 +138,7 @@ def test_resolve_deep_dotted_index():
     )
 
 
-def test_resolve_compound_index():
+def test_resolve_compound_index(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -169,7 +165,7 @@ def test_resolve_compound_index():
             )
 
 
-def test_resolve_non_string_attribute_fails():
+def test_resolve_non_string_attribute_fails(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -190,7 +186,7 @@ def test_resolve_non_string_attribute_fails():
             coll.ensure_index.assert_not_called()
 
 
-def test_badly_formed_index_raises_error():
+def test_badly_formed_index_raises_error(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -209,7 +205,7 @@ def test_badly_formed_index_raises_error():
             assert not coll.ensure_index.called
 
 
-def test_ensure_index_can_be_skipped():
+def test_ensure_index_can_be_skipped(DBTest):
     if _version._gte("4.0"):
         pytest.skip("ensure_index was removed in Pymongo 4.x")
 
@@ -228,7 +224,7 @@ def test_ensure_index_can_be_skipped():
             assert not coll.ensure_index.called
 
 
-def test_index_basic_pymongo_4():
+def test_index_basic_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 
@@ -247,7 +243,7 @@ def test_index_basic_pymongo_4():
             coll.create_index.assert_called_with(Test.user_name, background=True)
 
 
-def test_index_basic_sparse_pymongo_4():
+def test_index_basic_sparse_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 
@@ -268,7 +264,7 @@ def test_index_basic_sparse_pymongo_4():
             )
 
 
-def test_index_basic_directional_pymongo_4():
+def test_index_basic_directional_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 
@@ -290,7 +286,7 @@ def test_index_basic_directional_pymongo_4():
             )
 
 
-def test_index_override_defaults_pymongo_4():
+def test_index_override_defaults_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 
@@ -309,7 +305,7 @@ def test_index_override_defaults_pymongo_4():
             coll.create_index.assert_called_with(Test.user_name, background=False)
 
 
-def test_resolve_compound_index_pymongo_4():
+def test_resolve_compound_index_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 
@@ -361,7 +357,7 @@ def test_badly_formed_index_raises_error_pymongo_4():
             config_indexes = [Index([("value",)])]
 
 
-def test_create_index_can_be_skipped_pymongo_4():
+def test_create_index_can_be_skipped_pymongo_4(DBTest):
     if _version._lt("4.0"):
         pytest.skip("create_index was introduced in Pymongo 4.x")
 

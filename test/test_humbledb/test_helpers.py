@@ -11,7 +11,7 @@ from humbledb import Document, Mongo, _version
 from humbledb.errors import DatabaseMismatch, NoConnection
 from humbledb.helpers import auto_increment
 
-from ..util import DBTest, SkipTest, database_name
+from ..util import database_name
 
 SIDECAR = "sidecars"
 
@@ -60,7 +60,7 @@ def teardown():
     pass
 
 
-def test_auto_increment_works_as_advertised():
+def test_auto_increment_works_as_advertised(DBTest):
     doc = MyDoc()
     with DBTest:
         MyDoc.save(doc, **_safe)
@@ -78,7 +78,7 @@ def test_auto_increment_works_as_advertised():
     assert doc.auto == 2
 
 
-def test_auto_increment_initial_float_counter_value_remains_a_float():
+def test_auto_increment_initial_float_counter_value_remains_a_float(DBTest):
     if _version._gte("4.0"):
         pytest.skip("Pymongo 4.x / Python 3.x changed the float consistency behavior")
 
@@ -106,7 +106,7 @@ def test_auto_increment_initial_float_counter_value_remains_a_float():
     assert doc.auto == 102.0
 
 
-def test_auto_increment_works_with_user_defined_increment_step():
+def test_auto_increment_works_with_user_defined_increment_step(DBTest):
     doc = BigCounterDoc()
     with DBTest:
         BigCounterDoc.save(doc, **_safe)
@@ -123,7 +123,7 @@ def test_auto_increment_works_with_user_defined_increment_step():
 
 def test_auto_increment_errors_with_wrong_db():
     if _version._lt("2.6.0"):
-        raise SkipTest
+        pytest.skip("SkipTest")
 
     host = pyconfig.get("humbledb.test.db.host", "localhost")
     port = pyconfig.get("humbledb.test.db.port", 27017)

@@ -1,6 +1,5 @@
 from copy import copy, deepcopy
-
-import mock
+from unittest import mock
 
 from humbledb import Document
 from humbledb.cursor import Cursor

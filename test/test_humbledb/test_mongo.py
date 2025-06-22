@@ -1,6 +1,6 @@
+from unittest import mock
 from unittest.case import SkipTest
 
-import mock
 import pyconfig
 import pytest
 

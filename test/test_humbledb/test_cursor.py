@@ -5,11 +5,7 @@ import mock
 from humbledb import Document
 from humbledb.cursor import Cursor
 
-from ..util import DBTest, database_name
-
-
-def teardown():
-    DBTest.connection.drop_database(database_name())
+from ..util import database_name
 
 
 class DocTest(Document):
@@ -19,7 +15,7 @@ class DocTest(Document):
     user_name = "u"
 
 
-def test_cloned_cursor_still_a_humbledb_cursor():
+def test_cloned_cursor_still_a_humbledb_cursor(DBTest):
     with DBTest:
         cursor = DocTest.find()
         cursor = cursor.clone()
@@ -27,7 +23,7 @@ def test_cloned_cursor_still_a_humbledb_cursor():
         assert issubclass(cursor._doc_cls, DocTest)
 
 
-def test_cloned_cursor_returns_correct_type():
+def test_cloned_cursor_returns_correct_type(DBTest):
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})
@@ -39,7 +35,7 @@ def test_cloned_cursor_returns_correct_type():
         assert isinstance(cursor[0], DocTest)
 
 
-def test_copy_of_cursor_returns_correct_type():
+def test_copy_of_cursor_returns_correct_type(DBTest):
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})
@@ -51,7 +47,7 @@ def test_copy_of_cursor_returns_correct_type():
         assert isinstance(cursor[0], DocTest)
 
 
-def test_deepcopy_of_cursor_returns_correct_type():
+def test_deepcopy_of_cursor_returns_correct_type(DBTest):
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})
@@ -63,7 +59,7 @@ def test_deepcopy_of_cursor_returns_correct_type():
         assert isinstance(cursor[0], DocTest)
 
 
-def test_if_a_cursor_is_not_returned_properly_we_exit_quickly():
+def test_if_a_cursor_is_not_returned_properly_we_exit_quickly(DBTest):
     with DBTest:
         with mock.patch.object(DocTest, "collection") as coll:
             coll.find.__name__ = "find"
@@ -71,7 +67,7 @@ def test_if_a_cursor_is_not_returned_properly_we_exit_quickly():
             assert cursor is coll.find.return_value
 
 
-def test_cursor_ensures_document_types_when_iterating_explicitly():
+def test_cursor_ensures_document_types_when_iterating_explicitly(DBTest):
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})
@@ -82,7 +78,7 @@ def test_cursor_ensures_document_types_when_iterating_explicitly():
         assert isinstance(item, DocTest)
 
 
-def test_cursor_ensures_document_types_when_iterating_to_list():
+def test_cursor_ensures_document_types_when_iterating_to_list(DBTest):
     with DBTest:
         # Ensure we have a document
         DocTest.insert({})

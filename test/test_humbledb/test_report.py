@@ -7,7 +7,7 @@ import pytool
 from humbledb import report
 from humbledb.report import DAY, HOUR, MINUTE, MONTH, YEAR, Report
 
-from ..util import DBTest, database_name
+from ..util import database_name
 
 
 class Yearly(Report):
@@ -45,10 +45,6 @@ class ByHour(Report):
     config_intervals = [DAY, HOUR]
 
 
-def teardown():
-    DBTest.connection.drop_database(database_name())
-
-
 def test_update_clause_creates_dot_notated_clause():
     stamp = datetime.datetime(2013, 1, 5, 7, 9, 0, tzinfo=pytool.time.UTC())
 
@@ -71,7 +67,7 @@ def test_update_clause_creates_dot_notated_clause():
     assert Daily._update_clause(MINUTE, stamp) == {Daily.minute + ".7.9": 1}
 
 
-def test_record_event_yearly():
+def test_record_event_yearly(DBTest):
     event = "yearly_record_event"
     now = pytool.time.utcnow()
     with DBTest:
@@ -96,7 +92,7 @@ def test_record_event_yearly():
     assert doc.day[now.month - 1][now.day - 1] == 2
 
 
-def test_record_event_monthly():
+def test_record_event_monthly(DBTest):
     event = "monthly_record_event"
     now = pytool.time.utcnow()
     with DBTest:
@@ -121,7 +117,7 @@ def test_record_event_monthly():
     assert doc.hour[now.day - 1][now.hour] == 2
 
 
-def test_record_event_daily():
+def test_record_event_daily(DBTest):
     event = "daily_record_event"
     now = pytool.time.utcnow()
     with DBTest:
@@ -146,7 +142,7 @@ def test_record_event_daily():
     assert doc.minute[now.hour][now.minute] == 2
 
 
-def test_preallocate_future():
+def test_preallocate_future(DBTest):
     class PreallocAlways(Report):
         config_database = database_name()
         config_collection = "prealloc"
@@ -167,7 +163,7 @@ def test_preallocate_future():
         assert PreallocAlways.find().count() == 2
 
 
-def test_report_query_by_hour():
+def test_report_query_by_hour(DBTest):
     now = pytool.time.utcnow()
     event = "event_test_report_query_by_hour"
     with DBTest:
@@ -178,7 +174,7 @@ def test_report_query_by_hour():
     assert counts == [0, 1, 1]
 
 
-def test_report_query_by_hour_across_edge():
+def test_report_query_by_hour_across_edge(DBTest):
     stamp = datetime.datetime(2013, 1, 1, tzinfo=pytool.time.UTC())
     stamp2 = stamp - datetime.timedelta(seconds=60 * 60)
     event = "event_test_report_query_by_hour_edge"
@@ -211,7 +207,7 @@ def test_extended_slice_error():
         ByHour.hourly[2:3:4]
 
 
-def test_report_query_monthly_by_yearly():
+def test_report_query_monthly_by_yearly(DBTest):
     stamp = pytool.time.utcnow()
     stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
     hour = datetime.timedelta(seconds=60 * 60)
@@ -230,7 +226,7 @@ def test_report_query_monthly_by_yearly():
         assert count.hour == 0
 
 
-def test_report_query_monthly_by_monthly():
+def test_report_query_monthly_by_monthly(DBTest):
     stamp = pytool.time.utcnow()
     stamp = report._relative_period(report.MONTH, stamp, -1)
     stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
@@ -249,7 +245,7 @@ def test_report_query_monthly_by_monthly():
         assert count.hour == 0
 
 
-def test_report_query_monthly_by_daily():
+def test_report_query_monthly_by_daily(DBTest):
     stamp = pytool.time.utcnow()
     stamp -= datetime.timedelta(days=1)
     stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
@@ -267,7 +263,7 @@ def test_report_query_monthly_by_daily():
         assert count.hour == 0
 
 
-def test_report_query_monthly_by_hourly():
+def test_report_query_monthly_by_hourly(DBTest):
     stamp = pytool.time.utcnow()
     stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
     hour = datetime.timedelta(seconds=60 * 60)
@@ -288,7 +284,7 @@ def test_report_query_monthly_by_hourly():
         assert [c.hour for c in counts] == [0, 1, 2, 3, 4]
 
 
-def test_report_query_yearly_by_monthly():
+def test_report_query_yearly_by_monthly(DBTest):
     stamp = pytool.time.utcnow()
     stamp = report._relative_period(YEAR, stamp, -1)
     stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
@@ -307,7 +303,7 @@ def test_report_query_yearly_by_monthly():
         assert count.hour == 0
 
 
-def test_report_query_regex():
+def test_report_query_regex(DBTest):
     stamp = pytool.time.utcnow()
     stamp -= datetime.timedelta(days=1)
     stamp = stamp.replace(hour=1, minute=0, second=0, microsecond=0)
@@ -321,7 +317,7 @@ def test_report_query_regex():
         assert counts["regex_test1"] == [1]
 
 
-def test_report_query_end_index():
+def test_report_query_end_index(DBTest):
     stamp = pytool.time.utcnow()
     this_year = stamp.year
     last_year = stamp.year - 1
@@ -358,7 +354,7 @@ def test_report_query_end_index():
         assert Daily.per_minute(event)[0:60][-1] == 1
 
 
-def test_unspecified_start_year_index():
+def test_unspecified_start_year_index(DBTest):
     stamp = pytool.time.utcnow()
     this_year = stamp.year
     two_years_ago = this_year - 2
@@ -370,7 +366,7 @@ def test_unspecified_start_year_index():
         assert ByHour.yearly(event)[:-1][diff] == 1
 
 
-def test_no_results():
+def test_no_results(DBTest):
     with DBTest:
         assert ByHour.hourly("None")[-1:] == []
 
@@ -449,7 +445,7 @@ def test_report_count_works_with_integers():
     assert c.timestamp == stamp
 
 
-def test_report_query_coerces_date():
+def test_report_query_coerces_date(DBTest):
     stamp = pytool.time.utcnow()
     hour = datetime.timedelta(seconds=60 * 60)
 
@@ -471,7 +467,7 @@ def test_relative_period_MONTH_across_end_of_year_and_beginning():
     )
 
 
-def test_monthly_report_queried_daily_returns_correct_length():
+def test_monthly_report_queried_daily_returns_correct_length(DBTest):
     class Sum(Report):
         config_database = database_name()
         config_collection = "report.sum"
@@ -500,7 +496,7 @@ def test_monthly_report_queried_daily_returns_correct_length():
         date = day.timestamp
 
 
-def test_report_queried_with_date_works():
+def test_report_queried_with_date_works(DBTest):
     now = pytool.time.utcnow()
     today = now.date()
     tomorrow = now + datetime.timedelta(days=1)
@@ -514,14 +510,14 @@ def test_report_queried_with_date_works():
         assert sum(Monthly.daily(event)[today:tomorrow]) == 3
 
 
-def test_record_arbitrary_count():
+def test_record_arbitrary_count(DBTest):
     event = "event_arbitrary_count"
     with DBTest:
         Monthly.record(event, count=20)
         assert sum(Monthly.hourly(event)[-1:]) == 20
 
 
-def test_record_negative_count():
+def test_record_negative_count(DBTest):
     event = "event_negative_count"
     with DBTest:
         Monthly.record(event, count=-5)
@@ -543,7 +539,7 @@ def test_record_bad_count_type_raises_value_error2():
         Monthly.record("foo", count=2.5)
 
 
-def test_recording_and_retrieving_in_september_works():
+def test_recording_and_retrieving_in_september_works(DBTest):
     with DBTest:
         Monthly.record("test_september", datetime.datetime(2013, 9, 1, 12))
 

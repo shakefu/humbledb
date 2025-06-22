@@ -30,3 +30,9 @@ docs = [
 # This is required so setuptools doesn't see other directories as a package
 [tool.setuptools]
 packages = ["humbledb"]
+
+[tool.coverage.run]
+omit = [
+    "humbledb/_version.py",
+    "test/**",
+]
